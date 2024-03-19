@@ -1,0 +1,12 @@
+resources:
+- manager.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: operator-focus
+  newTag: "0.1"
+configMapGenerator:
+- literals:
+  - REPO=repository
+  name: repo-envvar-configmap-exporter

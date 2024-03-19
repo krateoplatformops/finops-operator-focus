@@ -1,0 +1,12 @@
+apiVersion: finops.krateo.io/v1
+kind: FocusConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: focusconfig
+    app.kubernetes.io/instance: focusconfig-sample
+    app.kubernetes.io/part-of: operator-focus
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator-focus
+  name: focusconfig-sample
+spec:
+  # TODO(user): Add fields here
