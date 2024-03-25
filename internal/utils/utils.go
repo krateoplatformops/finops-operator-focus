@@ -135,14 +135,11 @@ func GetStringValue(value any) string {
 		return metav1Time.Format(time.RFC3339)
 	}
 
-	tags, ok := value.([]any)
+	tags, ok := value.([]finopsv1.TagsType)
 	if ok {
 		res := ""
-		for _, obj := range tags {
-			tag, okk := obj.(finopsv1.TagsType)
-			if okk {
-				res += tag.Key + "=" + tag.Value + ";"
-			}
+		for _, tag := range tags {
+			res += tag.Key + "=" + tag.Value + ";"
 		}
 		return strings.TrimSuffix(res, ";")
 	}
