@@ -54,7 +54,7 @@ func GetGenericExporterDeployment(focusConfig finopsv1.FocusConfig) (*appsv1.Dep
 					Containers: []corev1.Container{
 						{
 							Name:            "scraper",
-							Image:           repository + "/prometheus-exporter-generic:0.1",
+							Image:           repository + "/finops-prometheus-exporter-generic:0.1.0",
 							Args:            []string{focusConfig.Name},
 							ImagePullPolicy: corev1.PullAlways,
 							VolumeMounts: []corev1.VolumeMount{
@@ -177,6 +177,12 @@ func GetGenericExporterService(focusConfig finopsv1.FocusConfig) (*corev1.Servic
 }
 
 func CreateScraperCR(ctx context.Context, focusConfig finopsv1.FocusConfig, serviceIp string, servicePort int) error {
+	if focusConfig.Spec.ScraperConfig.TableName == "" &&
+		focusConfig.Spec.ScraperConfig.PollingIntervalHours == 0 &&
+		focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name == "" &&
+		focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace == "" {
+		return nil
+	}
 	inClusterConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return err
