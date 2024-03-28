@@ -23,7 +23,8 @@ import (
 
 // FocusConfigSpec defines the desired state of FocusConfig
 type FocusConfigSpec struct {
-	FocusSpec     FocusSpec     `yaml:"focusSpec" json:"focusSpec"`
+	FocusSpec FocusSpec `yaml:"focusSpec" json:"focusSpec"`
+	// +optional
 	ScraperConfig ScraperConfig `yaml:"scraperConfig" json:"scraperConfig"`
 }
 

@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var repository = os.Getenv("REPO")
+var repository = strings.TrimSuffix(os.Getenv("REPO"), "/")
 
 func Int32Ptr(i int32) *int32 { return &i }
 
@@ -54,7 +54,7 @@ func GetGenericExporterDeployment(focusConfig finopsv1.FocusConfig) (*appsv1.Dep
 					Containers: []corev1.Container{
 						{
 							Name:            "scraper",
-							Image:           repository + "/finops-prometheus-exporter-generic:0.1.0",
+							Image:           repository + "/finops-prometheus-exporter-generic:latest",
 							Args:            []string{focusConfig.Name},
 							ImagePullPolicy: corev1.PullAlways,
 							VolumeMounts: []corev1.VolumeMount{
