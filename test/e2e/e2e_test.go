@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"operator-focus/test/utils"
+	"github.com/krateoplatformops/finops-operator-focus/test/utils"
 )
 
 const namespace = "operator-focus-system"
