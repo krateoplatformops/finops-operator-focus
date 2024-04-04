@@ -7,8 +7,10 @@ require (
 	github.com/onsi/gomega v1.30.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
-	sigs.k8s.io/controller-runtime v0.17.0
+	sigs.k8s.io/controller-runtime v0.17.2
 )
+
+require github.com/krateoplatformops/finops-operator-exporter v0.0.0-20240404134834-ec37d43733fa // indirect
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

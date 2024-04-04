@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	operatorPackage "github.com/krateoplatformops/finops-operator-exporter/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -207,7 +208,7 @@ func CreateScraperCR(ctx context.Context, focusConfig finopsv1.FocusConfig, serv
 		if url == "" {
 			url = "http://" + serviceIp + ":" + strconv.FormatInt(int64(servicePort), 10) + "/metrics"
 		}
-		scraperConfig := &finopsv1.ScraperConfigFromScraperOperator{
+		scraperConfig := &operatorPackage.ScraperConfigFromScraperOperator{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ScraperConfig",
 				APIVersion: "finops.krateo.io/v1",
@@ -224,11 +225,11 @@ func CreateScraperCR(ctx context.Context, focusConfig finopsv1.FocusConfig, serv
 					},
 				},
 			},
-			Spec: finopsv1.ScraperConfigSpecFromScraperOperator{
+			Spec: operatorPackage.ScraperConfigSpecFromScraperOperator{
 				TableName:            focusConfig.Spec.ScraperConfig.TableName,
 				Url:                  url,
 				PollingIntervalHours: focusConfig.Spec.ScraperConfig.PollingIntervalHours,
-				ScraperDatabaseConfigRef: finopsv1.ScraperDatabaseConfigRef{
+				ScraperDatabaseConfigRef: operatorPackage.ScraperDatabaseConfigRef{
 					Name:      focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name,
 					Namespace: focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace,
 				},
