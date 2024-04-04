@@ -19,13 +19,15 @@ package v1
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	operatorPackage "github.com/krateoplatformops/finops-operator-exporter/api/v1"
 )
 
 // FocusConfigSpec defines the desired state of FocusConfig
 type FocusConfigSpec struct {
 	FocusSpec FocusSpec `yaml:"focusSpec" json:"focusSpec"`
 	// +optional
-	ScraperConfig ScraperConfig `yaml:"scraperConfig" json:"scraperConfig"`
+	ScraperConfig operatorPackage.ScraperConfig `yaml:"scraperConfig" json:"scraperConfig"`
 }
 
 // FocusConfigStatus defines the observed state of FocusConfig
@@ -140,31 +142,4 @@ type FocusSpec struct {
 	Tags          []TagsType        `yaml:"tags" json:"tags"`
 	UsageQuantity resource.Quantity `yaml:"usageQuantity" json:"usageQuantity"`
 	UsageUnit     string            `yaml:"usageUnit" json:"usageUnit"`
-}
-
-type ScraperConfig struct {
-	TableName            string `yaml:"tableName" json:"tableName"`
-	PollingIntervalHours int    `yaml:"pollingIntervalHours" json:"pollingIntervalHours"`
-	// +optional
-	Url                      string                   `yaml:"url" json:"url"`
-	ScraperDatabaseConfigRef ScraperDatabaseConfigRef `yaml:"scraperDatabaseConfigRef" json:"scraperDatabaseConfigRef"`
-}
-
-type ScraperDatabaseConfigRef struct {
-	Name      string `yaml:"name" json:"name"`
-	Namespace string `yaml:"namespace" json:"namespace"`
-}
-
-type ScraperConfigFromScraperOperator struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec ScraperConfigSpecFromScraperOperator `json:"spec,omitempty"`
-}
-
-type ScraperConfigSpecFromScraperOperator struct {
-	TableName                string                   `yaml:"tableName" json:"tableName"`
-	PollingIntervalHours     int                      `yaml:"pollingIntervalHours" json:"pollingIntervalHours"`
-	Url                      string                   `yaml:"url" json:"url"`
-	ScraperDatabaseConfigRef ScraperDatabaseConfigRef `yaml:"scraperDatabaseConfigRef" json:"scraperDatabaseConfigRef"`
 }
