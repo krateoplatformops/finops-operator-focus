@@ -1,4 +1,4 @@
-module operator-focus
+module github.com/krateoplatformops/finops-operator-focus
 
 go 1.21
 

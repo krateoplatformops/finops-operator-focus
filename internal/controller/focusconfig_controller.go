@@ -27,12 +27,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	finopsv1 "operator-focus/api/v1"
+	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	utils "operator-focus/internal/utils"
+	utils "github.com/krateoplatformops/finops-operator-focus/internal/utils"
 )
 
 // FocusConfigReconciler reconciles a FocusConfig object

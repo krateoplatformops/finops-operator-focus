@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	finopsv1 "operator-focus/api/v1"
+	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 
