@@ -44,11 +44,11 @@ type FocusConfigReconciler struct {
 //+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=scraperconfigs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=databaseconfigs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=finops.krateo.io,resources=scraperconfigs,verbs=get;create;update
+//+kubebuilder:rbac:groups=finops.krateo.io,resources=databaseconfigs,verbs=get;create;update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;create;update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;create;update
+//+kubebuilder:rbac:groups=core,resources=services,verbs=get;create;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
