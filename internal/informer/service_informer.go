@@ -37,13 +37,6 @@ type ServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=focusconfigs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=scraperconfigs,verbs=get;create;update
-//+kubebuilder:rbac:groups=finops.krateo.io,resources=databaseconfigs,verbs=get;create;update
-//+kubebuilder:rbac:groups=core,resources=services,verbs=get;create;list;update
-
 func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.Log.WithValues("FinOps.V1", "SERVICE")
 	var err error

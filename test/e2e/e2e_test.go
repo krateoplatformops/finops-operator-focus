@@ -27,7 +27,7 @@ import (
 	"github.com/krateoplatformops/finops-operator-focus/test/utils"
 )
 
-const namespace = "operator-focus-system"
+const namespace = "finops"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
