@@ -32,7 +32,6 @@ type FocusConfigSpec struct {
 
 // FocusConfigStatus defines the observed state of FocusConfig
 type FocusConfigStatus struct {
-	// A list of pointers to currently running scraper deployments.
 	GroupKey string `json:"groupKey,omitempty"`
 }
 
