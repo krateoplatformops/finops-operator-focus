@@ -211,7 +211,6 @@ spec:
             description: FocusConfigStatus defines the observed state of FocusConfig
             properties:
               groupKey:
-                description: A list of pointers to currently running scraper deployments.
                 type: string
             type: object
         type: object
