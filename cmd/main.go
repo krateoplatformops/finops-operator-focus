@@ -38,7 +38,6 @@ import (
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	"github.com/krateoplatformops/finops-operator-focus/internal/controller"
-	"github.com/krateoplatformops/finops-operator-focus/internal/informer"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -153,30 +152,6 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FocusConfig")
-		os.Exit(1)
-	}
-
-	if err = (&informer.ConfigMapReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ConfigMapInformer")
-		os.Exit(1)
-	}
-
-	if err = (&informer.ServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceInformer")
-		os.Exit(1)
-	}
-
-	if err = (&informer.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DeploymentInformer")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
