@@ -98,7 +98,7 @@ func (r *ServiceReconciler) getConfigurationCR(ctx context.Context, name string,
 }
 
 func (r *ServiceReconciler) createRestoreServiceAgain(ctx context.Context, focusConfig finopsv1.FocusConfig, restore bool) error {
-	genericExporterService, err := utils.GetGenericExporterService(focusConfig)
+	genericExporterService, err := utils.GetGenericWebserviceService(focusConfig)
 	if err != nil {
 		return err
 	}

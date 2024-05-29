@@ -19,11 +19,9 @@ package informer
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,54 +40,37 @@ type ConfigMapReconciler struct {
 func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.Log.WithValues("FinOps.V1", "CONFIGMAP")
 	var err error
-
-	var configMap corev1.ConfigMap
-	// ConfigMap does not exist, check if the focusConfig exists
-	if err = r.Get(ctx, req.NamespacedName, &configMap); err != nil {
-		logger.Info("unable to fetch corev1.ConfigMap " + req.Name + " " + req.Namespace)
-		focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "-configmap", "", 1), req.Namespace)
-		if err != nil {
-			logger.Info("Unable to fetch focusConfig for " + strings.Replace(req.Name, "-configmap", "", 1) + " " + req.Namespace)
-			return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
-		}
-
-		outputStr, err := r.getOutputStr(ctx, focusConfig, req)
-		if err != nil {
-			return ctrl.Result{Requeue: false}, err
-		}
-
-		err = r.createRestoreConfigMapAgain(ctx, focusConfig, outputStr, false)
-		if err != nil {
-			logger.Error(err, "Unable to create ConfigMap again "+req.Name+" "+req.Namespace)
-			return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
-		}
-		logger.Info("Created configmap again: " + req.Name + " " + req.Namespace)
-
+	groupKey := strings.Replace(strings.Replace(req.Name, "-configmap", "", 1), "focus-", "", 1)
+	focusConfigList, err := r.getConfigurationCRList(ctx)
+	if err != nil {
+		logger.Info("Unable to fetch focusConfig for " + strings.Replace(req.Name, "-configmap", "", 1) + " " + req.Namespace)
+		return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
 	}
 
-	if ownerReferences := configMap.GetOwnerReferences(); len(ownerReferences) > 0 {
-		if ownerReferences[0].Kind == "FocusConfig" {
-			logger.Info("Called for " + req.Name + " " + req.Namespace + " owner: " + ownerReferences[0].Kind)
-			focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "-configmap", "", 1), req.Namespace)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 
-			outputStr, err := r.getOutputStr(ctx, focusConfig, req)
-			if err != nil {
-				return ctrl.Result{Requeue: false}, err
-			}
+	if len(configGroupingByDatabase[groupKey]) > 0 {
+		focusConfigRoot, outputStr := utils.GetOutputStr(configGroupingByDatabase, groupKey)
 
-			if !checkConfigMap(configMap, focusConfig, outputStr) {
-				err = r.createRestoreConfigMapAgain(ctx, focusConfig, outputStr, true)
+		var configMap corev1.ConfigMap
+		// ConfigMap does not exist, check if the focusConfig exists
+		if err = r.Get(ctx, req.NamespacedName, &configMap); err != nil {
+			logger.Info("unable to fetch corev1.ConfigMap " + req.Name + " " + req.Namespace)
+			err = r.createRestoreConfigMapAgain(ctx, focusConfigRoot, outputStr, false)
+			if err != nil {
+				logger.Error(err, "Unable to create ConfigMap again "+req.Name+" "+req.Namespace)
+				return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
+			}
+			logger.Info("Created configmap again: " + req.Name + " " + req.Namespace)
+		} else {
+			if !checkConfigMap(configMap, focusConfigRoot, outputStr) {
+				err = r.createRestoreConfigMapAgain(ctx, focusConfigRoot, outputStr, true)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
 				logger.Info("Updated configmap: " + req.Name + " " + req.Namespace)
 			}
 		}
-	} else {
-		return ctrl.Result{Requeue: false}, nil
 	}
 	return ctrl.Result{}, nil
 }
@@ -101,18 +82,17 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ConfigMapReconciler) getConfigurationCR(ctx context.Context, name string, namespace string) (finopsv1.FocusConfig, error) {
-	var focusConfig finopsv1.FocusConfig
-	configurationName := types.NamespacedName{Name: name, Namespace: namespace}
-	if err := r.Get(ctx, configurationName, &focusConfig); err != nil {
-		log.Log.Error(err, "unable to fetch finopsv1.focusConfig")
-		return finopsv1.FocusConfig{}, err
+func (r *ConfigMapReconciler) getConfigurationCRList(ctx context.Context) (finopsv1.FocusConfigList, error) {
+	var focusConfig finopsv1.FocusConfigList
+	if err := r.List(ctx, &focusConfig); err != nil {
+		log.Log.Error(err, "unable to list finopsv1.focusConfig")
+		return finopsv1.FocusConfigList{}, err
 	}
 	return focusConfig, nil
 }
 
 func (r *ConfigMapReconciler) createRestoreConfigMapAgain(ctx context.Context, focusConfig finopsv1.FocusConfig, output string, restore bool) error {
-	genericExporterConfigMap, err := utils.GetGenericExporterConfigMap(output, focusConfig)
+	genericExporterConfigMap, err := utils.GetGenericWebserviceConfigMap(output, focusConfig)
 	if err != nil {
 		return err
 	}
@@ -156,46 +136,4 @@ func checkConfigMap(configMap corev1.ConfigMap, focusConfig finopsv1.FocusConfig
 	}
 
 	return true
-}
-
-func (r *ConfigMapReconciler) getOutputStr(ctx context.Context, focusConfig finopsv1.FocusConfig, req ctrl.Request) (string, error) {
-	var err error
-	var focusConfigList finopsv1.FocusConfigList
-	if err = r.List(ctx, &focusConfigList, &client.ListOptions{Namespace: req.Namespace}); err != nil {
-		log.Log.Error(err, "unable to list FocusConfig")
-		return "", err
-	}
-	configGroupingByDatabase := []finopsv1.FocusConfig{}
-	for _, config := range focusConfigList.Items {
-		if config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace+
-			"="+config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name+
-			"="+config.Spec.ScraperConfig.TableName ==
-			focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace+
-				"="+focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name+
-				"="+focusConfig.Spec.ScraperConfig.TableName {
-			configGroupingByDatabase = append(configGroupingByDatabase, config)
-		}
-	}
-	outputStr := ""
-	for i, config := range configGroupingByDatabase {
-		v := reflect.ValueOf(config.Spec.FocusSpec)
-
-		if i == 0 {
-			focusConfig = *config.DeepCopy()
-
-			for i := 0; i < v.NumField(); i++ {
-				outputStr += v.Type().Field(i).Name + ","
-			}
-			outputStr = strings.TrimSuffix(outputStr, ",") + "\n"
-		}
-
-		for i := 0; i < v.NumField(); i++ {
-			outputStr += utils.GetStringValue(v.Field(i).Interface()) + ","
-		}
-		outputStr = strings.TrimSuffix(outputStr, ",") + "\n"
-
-	}
-	outputStr = strings.TrimSuffix(outputStr, "\n")
-
-	return outputStr, nil
 }

@@ -45,9 +45,9 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Deployment does not exist, check if the focusConfig exists
 	if err = r.Get(ctx, req.NamespacedName, &deployment); err != nil {
 		logger.Info("unable to fetch appsv1.Deployment " + req.Name + " " + req.Namespace)
-		focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "-deployment", "", 1), req.Namespace)
+		focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "webservice-generic-deployment", "", 1), req.Namespace)
 		if err != nil {
-			logger.Info("Unable to fetch focusConfig for " + strings.Replace(req.Name, "-deployment", "", 1) + " " + req.Namespace)
+			logger.Info("Unable to fetch focusConfig for " + strings.Replace(req.Name, "-webservice-generic-deployment", "", 1) + " " + req.Namespace)
 			return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
 		}
 		err = r.createRestoreDeploymentAgain(ctx, focusConfig, false)
@@ -62,7 +62,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if ownerReferences := deployment.GetOwnerReferences(); len(ownerReferences) > 0 {
 		if ownerReferences[0].Kind == "focusConfig" {
 			logger.Info("Called for " + req.Name + " " + req.Namespace + " owner: " + ownerReferences[0].Kind)
-			focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "-deployment", "", 1), req.Namespace)
+			focusConfig, err := r.getConfigurationCR(ctx, strings.Replace(req.Name, "-webservice-generic-deployment", "", 1), req.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -98,7 +98,7 @@ func (r *DeploymentReconciler) getConfigurationCR(ctx context.Context, name stri
 }
 
 func (r *DeploymentReconciler) createRestoreDeploymentAgain(ctx context.Context, focusConfig finopsv1.FocusConfig, restore bool) error {
-	genericExporterDeployment, err := utils.GetGenericExporterDeployment(focusConfig)
+	genericExporterDeployment, err := utils.GetGenericWebserviceDeployment(focusConfig)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (r *DeploymentReconciler) createRestoreDeploymentAgain(ctx context.Context,
 }
 
 func checkDeployment(deployment appsv1.Deployment, focusConfig finopsv1.FocusConfig) bool {
-	if deployment.Name != focusConfig.Name+"-deployment" {
+	if deployment.Name != focusConfig.Name+"-webservice-generic-deployment" {
 		log.Log.Info("Name does not respect naming convention")
 		return false
 	}

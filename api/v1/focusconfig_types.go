@@ -32,7 +32,8 @@ type FocusConfigSpec struct {
 
 // FocusConfigStatus defines the observed state of FocusConfig
 type FocusConfigStatus struct {
-	GroupKey string `json:"groupKey,omitempty"`
+	GroupKey        string `json:"groupKey,omitempty"`
+	FocusConfigRoot string `json:"focusConfigRoot,omitempty"`
 }
 
 //+kubebuilder:object:root=true
