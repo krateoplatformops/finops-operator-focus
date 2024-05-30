@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-	"time"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -20,52 +19,51 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	if err != nil {
 		return err
 	}
-	DeleteExporterScraperConfig(ctx, clientset, namespace, groupKey)
-	for CheckExporterScraperConfigDeletion(ctx, clientset, namespace, groupKey) {
-		time.Sleep(500 * time.Millisecond)
+
+	deploymentName := MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+	// This check is used to avoid problems with the maximum length of object names in kubernetes (63)
+	// The longest appended portion is "-scraper-deployment", which is 19 characters, thus the 44
+	if len(deploymentName) > 44 {
+		deploymentName = deploymentName[len(deploymentName)-44:]
 	}
-	time.Sleep(500 * time.Millisecond)
-	url := "http://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey%3D" + groupKey + "&limit=500/"
-	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, url)
-	jsonData, err := json.Marshal(exporterScraperConfig)
-	if err != nil {
-		return err
-	}
-	_, err = clientset.RESTClient().Post().
-		AbsPath("/apis/finops.krateo.io/v1").
-		Namespace(namespace).
-		Resource("exporterscraperconfigs").
-		Name(makeGroupKeyKubeCompliant(groupKey) + "-exporter").
-		Body(jsonData).
-		DoRaw(ctx)
-	if err != nil {
-		return err
+
+	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+	url := "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey=" + groupKey + "&limit=500"
+	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, url, deploymentName)
+	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
+		DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+		jsonData, err := json.Marshal(exporterScraperConfig)
+		if err != nil {
+			return err
+		}
+		_, err = clientset.RESTClient().Post().
+			AbsPath("/apis/finops.krateo.io/v1").
+			Namespace(namespace).
+			Resource("exporterscraperconfigs").
+			Name(deploymentName).
+			Body(jsonData).
+			DoRaw(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func GetExporterScraperObject(namespace string, groupKey string, url string) *operatorPackage.ExporterScraperConfig {
-	groupKeyKubeCompliant := makeGroupKeyKubeCompliant(groupKey)
+func GetExporterScraperObject(namespace string, groupKey string, url string, deploymentName string) *operatorPackage.ExporterScraperConfig {
 	additionalVariables := make(map[string]string)
 	additionalVariables["certFilePath"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	additionalVariables["kubernetes_host"] = "KUBERNETES_SERVICE_HOST"
+	additionalVariables["kubernetes_port"] = "KUBERNETES_SERVICE_PORT"
 	return &operatorPackage.ExporterScraperConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExporterScraperConfig",
 			APIVersion: "finops.krateo.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      groupKeyKubeCompliant + "-exporter",
+			Name:      deploymentName,
 			Namespace: namespace,
-			/*
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: focusConfig.APIVersion,
-						Kind:       focusConfig.Kind,
-						Name:       focusConfig.Name,
-						UID:        focusConfig.UID,
-					},
-				},*/
 		},
 		Spec: operatorPackage.ExporterScraperConfigSpec{
 			ExporterConfig: operatorPackage.ExporterConfig{
@@ -77,11 +75,11 @@ func GetExporterScraperObject(namespace string, groupKey string, url string) *op
 				AdditionalVariables:   additionalVariables,
 			},
 			ScraperConfig: operatorPackage.ScraperConfig{
-				TableName:            strings.Split(groupKey, "=")[2],
+				TableName:            strings.Split(groupKey, ">")[2],
 				PollingIntervalHours: 6,
 				ScraperDatabaseConfigRef: operatorPackage.ScraperDatabaseConfigRef{
-					Name:      strings.Split(groupKey, "=")[1],
-					Namespace: strings.Split(groupKey, "=")[0],
+					Name:      strings.Split(groupKey, ">")[1],
+					Namespace: strings.Split(groupKey, ">")[0],
 				},
 			},
 		},
@@ -94,6 +92,9 @@ func GetClientSet() (*kubernetes.Clientset, error) {
 		return &kubernetes.Clientset{}, err
 	}
 
+	inClusterConfig.APIPath = "/apis"
+	inClusterConfig.GroupVersion = &finopsv1.GroupVersion
+
 	clientset, err := kubernetes.NewForConfig(inClusterConfig)
 	if err != nil {
 		return &kubernetes.Clientset{}, err
@@ -101,37 +102,106 @@ func GetClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func DeleteExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, groupKey string) {
+func DeleteExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) {
 	_, _ = clientset.RESTClient().Delete().
 		AbsPath("/apis/finops.krateo.io/v1").
 		Namespace(namespace).
 		Resource("exporterscraperconfigs").
-		Name(makeGroupKeyKubeCompliant(groupKey) + "-exporter").
+		Name(deploymentName).
 		DoRaw(ctx)
 }
 
-func CheckExporterScraperConfigDeletion(ctx context.Context, clientset *kubernetes.Clientset, namespace string, groupKey string) bool {
-	_, err := clientset.RESTClient().Get().
+func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (operatorPackage.ExporterScraperConfig, error) {
+	response, err := clientset.RESTClient().Get().
 		AbsPath("/apis/finops.krateo.io/v1").
 		Namespace(namespace).
 		Resource("exporterscraperconfigs").
-		Name(makeGroupKeyKubeCompliant(groupKey) + "-exporter").
+		Name(deploymentName).
 		DoRaw(ctx)
-	return err == nil
+	var exporterScraperConfig operatorPackage.ExporterScraperConfig
+	if err != nil {
+		return exporterScraperConfig, err
+	} else {
+		json.Unmarshal(response, &exporterScraperConfig)
+		return exporterScraperConfig, nil
+	}
+
 }
 
 func CreateGroupings(focusConfigList finopsv1.FocusConfigList) map[string][]finopsv1.FocusConfig {
 	configGroupingByDatabase := make(map[string][]finopsv1.FocusConfig)
 	for _, config := range focusConfigList.Items {
 		newGroupKey := config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace +
-			"=" + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
-			"=" + config.Spec.ScraperConfig.TableName
+			">" + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
+			">" + config.Spec.ScraperConfig.TableName
 		arrSoFar := configGroupingByDatabase[newGroupKey]
 		configGroupingByDatabase[newGroupKey] = append(arrSoFar, config)
 	}
 	return configGroupingByDatabase
 }
 
-func makeGroupKeyKubeCompliant(groupKey string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(groupKey, "_", "-"), "=", "-")
+func MakeGroupKeyKubeCompliant(groupKey string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(groupKey, "_", "-"), "=", "-"), ".", "-")
+}
+
+// Could probably be more readable and scalable with reflect, but for now its ok
+func checkExporterScraperConfigs(exporterScraperConfig1 operatorPackage.ExporterScraperConfig, exporterScraperConfig2 operatorPackage.ExporterScraperConfig) bool {
+	if exporterScraperConfig1.Kind != exporterScraperConfig2.Kind {
+		return false
+	}
+	if exporterScraperConfig1.APIVersion != exporterScraperConfig2.APIVersion {
+		return false
+	}
+
+	if exporterScraperConfig1.ObjectMeta.Name != exporterScraperConfig2.ObjectMeta.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.ObjectMeta.Namespace != exporterScraperConfig2.ObjectMeta.Namespace {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.Name != exporterScraperConfig2.Spec.ExporterConfig.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.Url != exporterScraperConfig2.Spec.ExporterConfig.Url {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.RequireAuthentication != exporterScraperConfig2.Spec.ExporterConfig.RequireAuthentication {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.AuthenticationMethod != exporterScraperConfig2.Spec.ExporterConfig.AuthenticationMethod {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.PollingIntervalHours != exporterScraperConfig2.Spec.ExporterConfig.PollingIntervalHours {
+		return false
+	}
+
+	for key := range exporterScraperConfig1.Spec.ExporterConfig.AdditionalVariables {
+		if exporterScraperConfig1.Spec.ExporterConfig.AdditionalVariables[key] != exporterScraperConfig2.Spec.ExporterConfig.AdditionalVariables[key] {
+			return false
+		}
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.TableName != exporterScraperConfig2.Spec.ScraperConfig.TableName {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.PollingIntervalHours != exporterScraperConfig2.Spec.ScraperConfig.PollingIntervalHours {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name != exporterScraperConfig2.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace != exporterScraperConfig2.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace {
+		return false
+	}
+
+	return true
 }

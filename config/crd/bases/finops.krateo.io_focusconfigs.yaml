@@ -212,8 +212,6 @@ spec:
           status:
             description: FocusConfigStatus defines the observed state of FocusConfig
             properties:
-              focusConfigRoot:
-                type: string
               groupKey:
                 type: string
             type: object

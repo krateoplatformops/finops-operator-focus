@@ -38,6 +38,7 @@ import (
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	"github.com/krateoplatformops/finops-operator-focus/internal/controller"
+	"github.com/krateoplatformops/finops-operator-focus/internal/watcher"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -154,8 +155,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "FocusConfig")
 		os.Exit(1)
 	}
-	//+kubebuilder:scaffold:builder
 
+	watcher.StartWatcher(watchNamespace)
+
+	//+kubebuilder:scaffold:builder
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)

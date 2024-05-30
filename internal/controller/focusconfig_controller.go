@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -57,6 +58,12 @@ func (r *FocusConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	logger := log.Log.WithValues("FinOps.V1", req.NamespacedName)
 	var err error
 
+	var focusConfigReq finopsv1.FocusConfig
+	if err = r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, &focusConfigReq); err != nil {
+		logger.Info("Could not retrieve FocusConfig, probably deleted. Informer will handle it...")
+		return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
+	}
+
 	var focusConfigList finopsv1.FocusConfigList
 	if err = r.List(ctx, &focusConfigList, &client.ListOptions{Namespace: req.Namespace}); err != nil {
 		logger.Error(err, "unable to list FocusConfig")
@@ -65,8 +72,17 @@ func (r *FocusConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 	for key := range configGroupingByDatabase {
+		logger.Info("Checking if there are exporters to create...")
 		if err = r.createExporterFromScratch(ctx, req.Namespace, key); err != nil {
 			return ctrl.Result{}, err
+		}
+		for i := range configGroupingByDatabase[key] {
+			logger.Info("Updating status groupKey for focusConfig CRs")
+			configGroupingByDatabase[key][i].Status.GroupKey = key
+			err = r.Status().Update(ctx, &configGroupingByDatabase[key][i])
+			if err != nil {
+				return ctrl.Result{}, nil
+			}
 		}
 	}
 
@@ -81,14 +97,10 @@ func (r *FocusConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *FocusConfigReconciler) createExporterFromScratch(ctx context.Context, namespace string, groupKey string) error {
-	log.Log.Info("createExporterFromScratch Start")
-	var err error
-
 	// Create the CR to start the Exporter Operator
-	err = utils.CreateExporterCR(ctx, namespace, groupKey)
+	err := utils.CreateExporterCR(ctx, namespace, groupKey)
 	if err != nil {
 		return err
 	}
-	log.Log.Info("createExporterFromScratch Finish")
 	return nil
 }
