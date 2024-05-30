@@ -27,20 +27,13 @@ import (
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
-	operatorPackage "github.com/krateoplatformops/finops-operator-exporter/api/v1"
 	utils "github.com/krateoplatformops/finops-operator-focus/internal/utils"
 )
 
 // FocusConfigReconciler reconciles a FocusConfig object
 type FocusConfigReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Groupings []GroupKeyExporterScraperConfigCombo
-}
-
-type GroupKeyExporterScraperConfigCombo struct {
-	GroupKey              string
-	ExporterScraperConfig operatorPackage.ExporterScraperConfig
+	Scheme *runtime.Scheme
 }
 
 //+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=focusconfigs,verbs=get;list;watch;create;update;patch;delete
