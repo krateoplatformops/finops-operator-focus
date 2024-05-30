@@ -27,7 +27,8 @@ go-install-tool "${LOCALBIN}" "sigs.k8s.io/kustomize/kustomize/v5" "${KUSTOMIZE_
 go-install-tool "${LOCALBIN}" "sigs.k8s.io/controller-tools/cmd/controller-gen" "${CONTROLLER_TOOLS_VERSION}" "${CONTROLLER_GEN}"
 
 $(echo $CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-
+sed -z -i 's/versions:\n  - name: v1/versions:\n  - name: v1\n    selectableFields:\n    - jsonPath: .status.groupKey/g' config/crd/bases/finops.krateo.io_focusconfigs.yaml
 cd config/manager && $(echo $KUSTOMIZE) edit set image controller=${IMG} && $(echo $KUSTOMIZE) edit set configmap repo-envvar-configmap-exporter --from-literal=REPO=${REPO}
 cd ../..
+
 $(echo $KUSTOMIZE) build config/default | $(echo $KUBECTL) apply -f -
