@@ -3,257 +3,205 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"strconv"
 	"strings"
-	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	operatorPackage "github.com/krateoplatformops/finops-operator-exporter/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var repository = strings.TrimSuffix(os.Getenv("REPO"), "/")
-
-func Int32Ptr(i int32) *int32 { return &i }
-
-func GetGenericExporterDeployment(focusConfig finopsv1.FocusConfig) (*appsv1.Deployment, error) {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      focusConfig.Name + "-deployment",
-			Namespace: focusConfig.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: focusConfig.APIVersion,
-					Kind:       focusConfig.Kind,
-					Name:       focusConfig.Name,
-					UID:        focusConfig.UID,
-				},
-			},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: Int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"scraper": focusConfig.Name,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"scraper": focusConfig.Name,
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            "scraper",
-							Image:           repository + "/finops-prometheus-exporter-generic:latest",
-							Args:            []string{focusConfig.Name},
-							ImagePullPolicy: corev1.PullAlways,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config-volume",
-									MountPath: "/temp",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-volume",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: focusConfig.Name + "-configmap",
-									},
-								},
-							},
-						},
-					},
-					ImagePullSecrets: []corev1.LocalObjectReference{
-						{
-							Name: "registry-credentials-default",
-						},
-					},
-				},
-			},
-		},
-	}, nil
-}
-
-func GetGenericExporterConfigMap(output string, focusConfig finopsv1.FocusConfig) (*corev1.ConfigMap, error) {
-	binaryData := make(map[string][]byte)
-	binaryData[focusConfig.Name+".dat"] = []byte(output)
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      focusConfig.Name + "-configmap",
-			Namespace: focusConfig.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: focusConfig.APIVersion,
-					Kind:       focusConfig.Kind,
-					Name:       focusConfig.Name,
-					UID:        focusConfig.UID,
-				},
-			},
-		},
-		BinaryData: binaryData,
-	}, nil
-}
-
-func GetStringValue(value any) string {
-
-	str, ok := value.(string)
-	if ok {
-		return str
-	}
-
-	integer, ok := value.(int)
-	if ok {
-		return strconv.FormatInt(int64(integer), 10)
-	}
-
-	integer64, ok := value.(int64)
-	if ok {
-		return strconv.FormatInt(integer64, 10)
-	}
-
-	resourceQuantity, ok := value.(resource.Quantity)
-	if ok {
-		return resourceQuantity.AsDec().String()
-	}
-
-	metav1Time, ok := value.(metav1.Time)
-	if ok {
-		return metav1Time.Format(time.RFC3339)
-	}
-
-	tags, ok := value.([]finopsv1.TagsType)
-	if ok {
-		res := ""
-		for _, tag := range tags {
-			res += tag.Key + "=" + tag.Value + ";"
-		}
-		return strings.TrimSuffix(res, ";")
-	}
-
-	return ""
-}
-
-func GetGenericExporterService(focusConfig finopsv1.FocusConfig) (*corev1.Service, error) {
-	labels := make(map[string]string)
-	labels["scraper"] = focusConfig.Name
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      focusConfig.Name + "-service",
-			Namespace: focusConfig.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: focusConfig.APIVersion,
-					Kind:       focusConfig.Kind,
-					Name:       focusConfig.Name,
-					UID:        focusConfig.UID,
-				},
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: labels,
-			Type:     corev1.ServiceTypeNodePort,
-			Ports: []corev1.ServicePort{
-				{
-					Protocol: corev1.ProtocolTCP,
-					Port:     2112,
-				},
-			},
-		},
-	}, nil
-}
-
-func CreateScraperCR(ctx context.Context, focusConfig finopsv1.FocusConfig, serviceIp string, servicePort int) error {
-	if focusConfig.Spec.ScraperConfig.TableName == "" &&
-		focusConfig.Spec.ScraperConfig.PollingIntervalHours == 0 &&
-		focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name == "" &&
-		focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace == "" {
-		return nil
-	}
-	inClusterConfig, err := rest.InClusterConfig()
+func CreateExporterCR(ctx context.Context, namespace string, groupKey string) error {
+	clientset, err := GetClientSet()
 	if err != nil {
 		return err
 	}
 
-	clientset, err := kubernetes.NewForConfig(inClusterConfig)
-	if err != nil {
-		return err
+	deploymentName := MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+	// This check is used to avoid problems with the maximum length of object names in kubernetes (63)
+	// The longest appended portion is "-scraper-deployment", which is 19 characters, thus the 44
+	if len(deploymentName) > 44 {
+		deploymentName = deploymentName[len(deploymentName)-44:]
 	}
 
-	jsonData, _ := clientset.RESTClient().Get().
-		AbsPath("/apis/finops.krateo.io/v1").
-		Namespace(focusConfig.Namespace).
-		Resource("scraperconfigs").
-		Name(focusConfig.Name + "-scraper").
-		DoRaw(context.TODO())
-
-	var crdResponse CRDResponse
-	_ = json.Unmarshal(jsonData, &crdResponse)
-	if crdResponse.Status == "Failure" {
-		url := focusConfig.Spec.ScraperConfig.Url
-		if url == "" {
-			url = "http://" + serviceIp + ":" + strconv.FormatInt(int64(servicePort), 10) + "/metrics"
-		}
-		scraperConfig := &operatorPackage.ScraperConfigFromScraperOperator{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ScraperConfig",
-				APIVersion: "finops.krateo.io/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      focusConfig.Name + "-scraper",
-				Namespace: focusConfig.Namespace,
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: focusConfig.APIVersion,
-						Kind:       focusConfig.Kind,
-						Name:       focusConfig.Name,
-						UID:        focusConfig.UID,
-					},
-				},
-			},
-			Spec: operatorPackage.ScraperConfigSpecFromScraperOperator{
-				TableName:            focusConfig.Spec.ScraperConfig.TableName,
-				Url:                  url,
-				PollingIntervalHours: focusConfig.Spec.ScraperConfig.PollingIntervalHours,
-				ScraperDatabaseConfigRef: operatorPackage.ScraperDatabaseConfigRef{
-					Name:      focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name,
-					Namespace: focusConfig.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace,
-				},
-			},
-		}
-		jsonData, err = json.Marshal(scraperConfig)
+	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+	url := "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey=" + groupKey + "&limit=500"
+	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, url, deploymentName)
+	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
+		DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+		jsonData, err := json.Marshal(exporterScraperConfig)
 		if err != nil {
 			return err
 		}
-		_, err := clientset.RESTClient().Post().
+		_, err = clientset.RESTClient().Post().
 			AbsPath("/apis/finops.krateo.io/v1").
-			Namespace(focusConfig.Namespace).
-			Resource("scraperconfigs").
-			Name(focusConfig.Name).
+			Namespace(namespace).
+			Resource("exporterscraperconfigs").
+			Name(deploymentName).
 			Body(jsonData).
 			DoRaw(ctx)
-
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-type CRDResponse struct {
-	Status string `json:"status"`
+func GetExporterScraperObject(namespace string, groupKey string, url string, deploymentName string) *operatorPackage.ExporterScraperConfig {
+	additionalVariables := make(map[string]string)
+	additionalVariables["certFilePath"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	additionalVariables["kubernetes_host"] = "KUBERNETES_SERVICE_HOST"
+	additionalVariables["kubernetes_port"] = "KUBERNETES_SERVICE_PORT"
+	return &operatorPackage.ExporterScraperConfig{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ExporterScraperConfig",
+			APIVersion: "finops.krateo.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deploymentName,
+			Namespace: namespace,
+		},
+		Spec: operatorPackage.ExporterScraperConfigSpec{
+			ExporterConfig: operatorPackage.ExporterConfig{
+				Name:                  "CC",
+				Url:                   url,
+				RequireAuthentication: true,
+				AuthenticationMethod:  "cert-file",
+				PollingIntervalHours:  6,
+				AdditionalVariables:   additionalVariables,
+			},
+			ScraperConfig: operatorPackage.ScraperConfig{
+				TableName:            strings.Split(groupKey, ">")[2],
+				PollingIntervalHours: 6,
+				ScraperDatabaseConfigRef: operatorPackage.ScraperDatabaseConfigRef{
+					Name:      strings.Split(groupKey, ">")[1],
+					Namespace: strings.Split(groupKey, ">")[0],
+				},
+			},
+		},
+	}
+}
+
+func GetClientSet() (*kubernetes.Clientset, error) {
+	inClusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return &kubernetes.Clientset{}, err
+	}
+
+	inClusterConfig.APIPath = "/apis"
+	inClusterConfig.GroupVersion = &finopsv1.GroupVersion
+
+	clientset, err := kubernetes.NewForConfig(inClusterConfig)
+	if err != nil {
+		return &kubernetes.Clientset{}, err
+	}
+	return clientset, nil
+}
+
+func DeleteExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) {
+	_, _ = clientset.RESTClient().Delete().
+		AbsPath("/apis/finops.krateo.io/v1").
+		Namespace(namespace).
+		Resource("exporterscraperconfigs").
+		Name(deploymentName).
+		DoRaw(ctx)
+}
+
+func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (operatorPackage.ExporterScraperConfig, error) {
+	response, err := clientset.RESTClient().Get().
+		AbsPath("/apis/finops.krateo.io/v1").
+		Namespace(namespace).
+		Resource("exporterscraperconfigs").
+		Name(deploymentName).
+		DoRaw(ctx)
+	var exporterScraperConfig operatorPackage.ExporterScraperConfig
+	if err != nil {
+		return exporterScraperConfig, err
+	} else {
+		json.Unmarshal(response, &exporterScraperConfig)
+		return exporterScraperConfig, nil
+	}
+
+}
+
+func CreateGroupings(focusConfigList finopsv1.FocusConfigList) map[string][]finopsv1.FocusConfig {
+	configGroupingByDatabase := make(map[string][]finopsv1.FocusConfig)
+	for _, config := range focusConfigList.Items {
+		newGroupKey := config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace +
+			">" + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
+			">" + config.Spec.ScraperConfig.TableName
+		arrSoFar := configGroupingByDatabase[newGroupKey]
+		configGroupingByDatabase[newGroupKey] = append(arrSoFar, config)
+	}
+	return configGroupingByDatabase
+}
+
+func MakeGroupKeyKubeCompliant(groupKey string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(groupKey, "_", "-"), "=", "-"), ".", "-")
+}
+
+// Could probably be more readable and scalable with reflect, but for now its ok
+func checkExporterScraperConfigs(exporterScraperConfig1 operatorPackage.ExporterScraperConfig, exporterScraperConfig2 operatorPackage.ExporterScraperConfig) bool {
+	if exporterScraperConfig1.Kind != exporterScraperConfig2.Kind {
+		return false
+	}
+	if exporterScraperConfig1.APIVersion != exporterScraperConfig2.APIVersion {
+		return false
+	}
+
+	if exporterScraperConfig1.ObjectMeta.Name != exporterScraperConfig2.ObjectMeta.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.ObjectMeta.Namespace != exporterScraperConfig2.ObjectMeta.Namespace {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.Name != exporterScraperConfig2.Spec.ExporterConfig.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.Url != exporterScraperConfig2.Spec.ExporterConfig.Url {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.RequireAuthentication != exporterScraperConfig2.Spec.ExporterConfig.RequireAuthentication {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.AuthenticationMethod != exporterScraperConfig2.Spec.ExporterConfig.AuthenticationMethod {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.PollingIntervalHours != exporterScraperConfig2.Spec.ExporterConfig.PollingIntervalHours {
+		return false
+	}
+
+	for key := range exporterScraperConfig1.Spec.ExporterConfig.AdditionalVariables {
+		if exporterScraperConfig1.Spec.ExporterConfig.AdditionalVariables[key] != exporterScraperConfig2.Spec.ExporterConfig.AdditionalVariables[key] {
+			return false
+		}
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.TableName != exporterScraperConfig2.Spec.ScraperConfig.TableName {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.PollingIntervalHours != exporterScraperConfig2.Spec.ScraperConfig.PollingIntervalHours {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name != exporterScraperConfig2.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace != exporterScraperConfig2.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace {
+		return false
+	}
+
+	return true
 }

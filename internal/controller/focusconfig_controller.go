@@ -18,8 +18,6 @@ package controller
 
 import (
 	"context"
-	"reflect"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,9 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 
 	utils "github.com/krateoplatformops/finops-operator-focus/internal/utils"
 )
@@ -44,11 +39,11 @@ type FocusConfigReconciler struct {
 //+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=focusconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=focusconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=focusconfigs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=scraperconfigs,verbs=get;create;update
+//+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=exporterscraperconfigs,verbs=get;create;update;delete
 //+kubebuilder:rbac:groups=finops.krateo.io,namespace=finops,resources=databaseconfigs,verbs=get;create;update
-//+kubebuilder:rbac:groups=apps,namespace=finops,resources=deployments,verbs=get;create;list;update;watch
-//+kubebuilder:rbac:groups=core,namespace=finops,resources=configmaps,verbs=get;create;list;update
-//+kubebuilder:rbac:groups=core,namespace=finops,resources=services,verbs=get;create;update;list;watch
+//+kubebuilder:rbac:groups=apps,namespace=finops,resources=deployments,verbs=get;create;list;update;watch;delete
+//+kubebuilder:rbac:groups=core,namespace=finops,resources=configmaps,verbs=get;create;list;update;delete
+//+kubebuilder:rbac:groups=core,namespace=finops,resources=services,verbs=get;create;update;list;watch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -56,9 +51,9 @@ func (r *FocusConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	logger := log.Log.WithValues("FinOps.V1", req.NamespacedName)
 	var err error
 
-	var curFocusConfig finopsv1.FocusConfig
-	if err = r.Get(ctx, req.NamespacedName, &curFocusConfig); err != nil {
-		logger.Info("unable to get current FocusConfig, probably deleted, ignoring...")
+	var focusConfigReq finopsv1.FocusConfig
+	if err = r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, &focusConfigReq); err != nil {
+		logger.Info("Could not retrieve FocusConfig, probably deleted. Informer will handle it...")
 		return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
 	}
 
@@ -68,50 +63,20 @@ func (r *FocusConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// All FocusSpec are grouped by the database configuration reference namespace and name, as well as the upload table
-	// For each group, a new set of exporter-scraper duo is generated, since they need to export to different locations if they have different
-	// database configuration
-	configGroupingByDatabase := make(map[string][]finopsv1.FocusConfig)
-	for i, config := range focusConfigList.Items {
-		arrSoFar := configGroupingByDatabase[config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace+
-			"="+config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name+
-			"="+config.Spec.ScraperConfig.TableName]
-		configGroupingByDatabase[config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace+
-			"="+config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name+
-			"="+config.Spec.ScraperConfig.TableName] = append(arrSoFar, config)
-		focusConfigList.Items[i].Status.GroupKey = config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace +
-			"=" + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
-			"=" + config.Spec.ScraperConfig.TableName
-	}
-
+	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 	for key := range configGroupingByDatabase {
-		outputStr := ""
-		var focusConfig finopsv1.FocusConfig
-		for i, config := range configGroupingByDatabase[key] {
-			v := reflect.ValueOf(config.Spec.FocusSpec)
-
-			if i == 0 {
-				focusConfig = *config.DeepCopy()
-
-				for i := 0; i < v.NumField(); i++ {
-					outputStr += v.Type().Field(i).Name + ","
-				}
-				outputStr = strings.TrimSuffix(outputStr, ",") + "\n"
-			}
-
-			for i := 0; i < v.NumField(); i++ {
-				outputStr += utils.GetStringValue(v.Field(i).Interface()) + ","
-			}
-			outputStr = strings.TrimSuffix(outputStr, ",") + "\n"
-
-		}
-		outputStr = strings.TrimSuffix(outputStr, "\n")
-		if err = r.createExporterFromScratch(ctx, req, focusConfig, outputStr); err != nil {
-			return ctrl.Result{}, err
-		} else if err = r.checkExporterStatus(ctx, focusConfig, outputStr); err != nil {
+		logger.Info("Checking if there are exporters to create...")
+		if err = r.createExporterFromScratch(ctx, req.Namespace, key); err != nil {
 			return ctrl.Result{}, err
 		}
-
+		for i := range configGroupingByDatabase[key] {
+			logger.Info("Updating status groupKey for focusConfig CRs")
+			configGroupingByDatabase[key][i].Status.GroupKey = key
+			err = r.Status().Update(ctx, &configGroupingByDatabase[key][i])
+			if err != nil {
+				return ctrl.Result{}, nil
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -124,100 +89,11 @@ func (r *FocusConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *FocusConfigReconciler) createExporterFromScratch(ctx context.Context, req ctrl.Request, focusConfig finopsv1.FocusConfig, output string) error {
-
-	var err error
-	// Create the ConfigMap first
-	// Check if the ConfigMap exists
-	genericExporterConfigMap := &corev1.ConfigMap{}
-	_ = r.Get(context.Background(), types.NamespacedName{
-		Namespace: req.Namespace,
-		Name:      focusConfig.Name + "-configmap",
-	}, genericExporterConfigMap)
-	// If it does not exist, create it
-	if genericExporterConfigMap.ObjectMeta.Name == "" {
-		genericExporterConfigMap, err = utils.GetGenericExporterConfigMap(output, focusConfig)
-		if err != nil {
-			return err
-		}
-		err = r.Create(ctx, genericExporterConfigMap)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Create the generic exporter deployment
-	// Create the generic exporter deployment
-	genericExporterDeployment := &appsv1.Deployment{}
-	_ = r.Get(context.Background(), types.NamespacedName{
-		Namespace: req.Namespace,
-		Name:      focusConfig.Name + "-deployment",
-	}, genericExporterDeployment)
-	if genericExporterDeployment.ObjectMeta.Name == "" {
-		genericExporterDeployment, err = utils.GetGenericExporterDeployment(focusConfig)
-		if err != nil {
-			return err
-		}
-		// Create the actual deployment
-		err = r.Create(ctx, genericExporterDeployment)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Create the Service
-	// Check if the Service exists
-	genericExporterService := &corev1.Service{}
-	_ = r.Get(context.Background(), types.NamespacedName{
-		Namespace: req.Namespace,
-		Name:      focusConfig.Name + "-service",
-	}, genericExporterService)
-	// If it does not exist, create it
-	if genericExporterService.ObjectMeta.Name == "" {
-		genericExporterService, _ = utils.GetGenericExporterService(focusConfig)
-		err = r.Create(ctx, genericExporterService)
-		if err != nil {
-			return err
-		}
-	}
-
-	serviceIp := genericExporterService.Spec.ClusterIP
-	servicePort := -1
-	for _, port := range genericExporterService.Spec.Ports {
-		servicePort = int(port.TargetPort.IntVal)
-	}
-
-	// Create the CR to start the Scraper Operator
-
-	err = utils.CreateScraperCR(ctx, focusConfig, serviceIp, servicePort)
+func (r *FocusConfigReconciler) createExporterFromScratch(ctx context.Context, namespace string, groupKey string) error {
+	// Create the CR to start the Exporter Operator
+	err := utils.CreateExporterCR(ctx, namespace, groupKey)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (r *FocusConfigReconciler) checkExporterStatus(ctx context.Context, focusConfig finopsv1.FocusConfig, output string) error {
-	genericExporterConfigMap, err := utils.GetGenericExporterConfigMap(output, focusConfig)
-	if err != nil {
-		return err
-	}
-	genericExporterDeployment, _ := utils.GetGenericExporterDeployment(focusConfig)
-	genericExporterService, _ := utils.GetGenericExporterService(focusConfig)
-
-	err = r.Update(ctx, genericExporterConfigMap)
-	if err != nil {
-		return err
-	}
-
-	err = r.Update(ctx, genericExporterDeployment)
-	if err != nil {
-		return err
-	}
-
-	err = r.Update(ctx, genericExporterService)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

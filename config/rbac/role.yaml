@@ -11,6 +11,7 @@ rules:
   - deployments
   verbs:
   - create
+  - delete
   - get
   - list
   - update
@@ -21,6 +22,7 @@ rules:
   - configmaps
   verbs:
   - create
+  - delete
   - get
   - list
   - update
@@ -30,6 +32,7 @@ rules:
   - services
   verbs:
   - create
+  - delete
   - get
   - list
   - update
@@ -40,6 +43,15 @@ rules:
   - databaseconfigs
   verbs:
   - create
+  - get
+  - update
+- apiGroups:
+  - finops.krateo.io
+  resources:
+  - exporterscraperconfigs
+  verbs:
+  - create
+  - delete
   - get
   - update
 - apiGroups:
@@ -67,12 +79,4 @@ rules:
   verbs:
   - get
   - patch
-  - update
-- apiGroups:
-  - finops.krateo.io
-  resources:
-  - scraperconfigs
-  verbs:
-  - create
-  - get
   - update

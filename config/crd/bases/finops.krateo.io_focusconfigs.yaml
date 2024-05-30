@@ -15,6 +15,8 @@ spec:
   scope: Namespaced
   versions:
   - name: v1
+    selectableFields:
+    - jsonPath: .status.groupKey
     schema:
       openAPIV3Schema:
         description: FocusConfig is the Schema for the focusconfigs API

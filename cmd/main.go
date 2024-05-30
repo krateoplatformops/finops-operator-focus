@@ -38,7 +38,7 @@ import (
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	"github.com/krateoplatformops/finops-operator-focus/internal/controller"
-	"github.com/krateoplatformops/finops-operator-focus/internal/informer"
+	"github.com/krateoplatformops/finops-operator-focus/internal/watcher"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -156,31 +156,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&informer.ConfigMapReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ConfigMapInformer")
-		os.Exit(1)
-	}
+	watcher.StartWatcher(watchNamespace)
 
-	if err = (&informer.ServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceInformer")
-		os.Exit(1)
-	}
-
-	if err = (&informer.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DeploymentInformer")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
-
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
