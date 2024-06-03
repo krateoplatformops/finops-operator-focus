@@ -67,7 +67,7 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 		},
 		Spec: operatorPackage.ExporterScraperConfigSpec{
 			ExporterConfig: operatorPackage.ExporterConfig{
-				Name:                  "CC",
+				Provider:              operatorPackage.ObjectRef{},
 				Url:                   url,
 				RequireAuthentication: true,
 				AuthenticationMethod:  "cert-file",
@@ -77,7 +77,7 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 			ScraperConfig: operatorPackage.ScraperConfig{
 				TableName:            strings.Split(groupKey, ">")[2],
 				PollingIntervalHours: 6,
-				ScraperDatabaseConfigRef: operatorPackage.ScraperDatabaseConfigRef{
+				ScraperDatabaseConfigRef: operatorPackage.ObjectRef{
 					Name:      strings.Split(groupKey, ">")[1],
 					Namespace: strings.Split(groupKey, ">")[0],
 				},
@@ -161,7 +161,11 @@ func checkExporterScraperConfigs(exporterScraperConfig1 operatorPackage.Exporter
 		return false
 	}
 
-	if exporterScraperConfig1.Spec.ExporterConfig.Name != exporterScraperConfig2.Spec.ExporterConfig.Name {
+	if exporterScraperConfig1.Spec.ExporterConfig.Provider.Name != exporterScraperConfig2.Spec.ExporterConfig.Provider.Name {
+		return false
+	}
+
+	if exporterScraperConfig1.Spec.ExporterConfig.Provider.Namespace != exporterScraperConfig2.Spec.ExporterConfig.Provider.Namespace {
 		return false
 	}
 

@@ -3,14 +3,13 @@ module github.com/krateoplatformops/finops-operator-focus
 go 1.21
 
 require (
+	github.com/krateoplatformops/finops-operator-exporter v0.0.0-20240603112741-6e9e23848be8
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
 	sigs.k8s.io/controller-runtime v0.17.2
 )
-
-require github.com/krateoplatformops/finops-operator-exporter v0.0.0-20240404134834-ec37d43733fa
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
