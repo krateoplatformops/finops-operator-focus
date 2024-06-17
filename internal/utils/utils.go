@@ -20,7 +20,15 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 		return err
 	}
 
-	deploymentName := MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+	var deploymentName string
+	var url string
+	if groupKey != ">>" {
+		deploymentName = MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+		url = "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey=" + groupKey + "&limit=500"
+	} else {
+		deploymentName = "all-cr-exporter"
+		url = "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs"
+	}
 	// This check is used to avoid problems with the maximum length of object names in kubernetes (63)
 	// The longest appended portion is "-scraper-deployment", which is 19 characters, thus the 44
 	if len(deploymentName) > 44 {
@@ -28,10 +36,11 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	}
 
 	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
-	url := "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey=" + groupKey + "&limit=500"
 	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, url, deploymentName)
 	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
-		DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+		if groupKey != ">>" {
+			DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
+		}
 		jsonData, err := json.Marshal(exporterScraperConfig)
 		if err != nil {
 			return err
@@ -56,6 +65,19 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 	additionalVariables["certFilePath"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	additionalVariables["kubernetes_host"] = "KUBERNETES_SERVICE_HOST"
 	additionalVariables["kubernetes_port"] = "KUBERNETES_SERVICE_PORT"
+
+	scaperConfigObject := operatorPackage.ScraperConfig{}
+	if groupKey != ">>" {
+		scaperConfigObject = operatorPackage.ScraperConfig{
+			TableName:            strings.Split(groupKey, ">")[2],
+			PollingIntervalHours: 6,
+			ScraperDatabaseConfigRef: operatorPackage.ObjectRef{
+				Name:      strings.Split(groupKey, ">")[1],
+				Namespace: strings.Split(groupKey, ">")[0],
+			},
+		}
+	}
+
 	return &operatorPackage.ExporterScraperConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExporterScraperConfig",
@@ -74,14 +96,7 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 				PollingIntervalHours:  6,
 				AdditionalVariables:   additionalVariables,
 			},
-			ScraperConfig: operatorPackage.ScraperConfig{
-				TableName:            strings.Split(groupKey, ">")[2],
-				PollingIntervalHours: 6,
-				ScraperDatabaseConfigRef: operatorPackage.ObjectRef{
-					Name:      strings.Split(groupKey, ">")[1],
-					Namespace: strings.Split(groupKey, ">")[0],
-				},
-			},
+			ScraperConfig: scaperConfigObject,
 		},
 	}
 }
