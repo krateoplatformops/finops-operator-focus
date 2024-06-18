@@ -67,7 +67,13 @@ func StartWatcher(namespace string) {
 			configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 			_, ok := configGroupingByDatabase[groupKey]
 			if !ok {
-				deploymentName := utils.MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+				var deploymentName string
+				if groupKey != ">>" {
+					deploymentName = utils.MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+				} else {
+					deploymentName = "all-cr-exporter"
+				}
+
 				if len(deploymentName) > 44 {
 					deploymentName = deploymentName[len(deploymentName)-44:]
 				}
