@@ -24,47 +24,11 @@ Detailed information on FOCUS can be found at the [official website](focus.finop
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.30.0+ cluster.
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
-
+### Installation with HELM
 ```sh
-IMG=<some-registry>/operator-focus:tag ./scripts/docker-build-push.sh
-```
-
-**NOTE:** This image ought to be published in the personal registry you specified. 
-And it is required to have access to pull the image from the working environment. 
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
-**the REPO variable is mandatory. This variable points to the repository for the prometheus-exporter-generic image**
-
-```sh
-IMG=<some-registry>/operator-focus:tag REPO=<some-registry> ./scripts/deploy.sh
-```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
-privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-./scripts/undeploy.sh
+$ helm repo add krateo https://charts.krateo.io
+$ helm repo update krateo
+$ helm install finops-operator-focus krateo/finops-operator-focus
 ```
 
 ## License
