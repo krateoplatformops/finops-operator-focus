@@ -15,14 +15,14 @@ The deployment of the operator needs a secret for the repository, called `regist
 
 The exporter container is created in the namespace of the CR. The exporter container looks for a secret in the CR namespace called `registry-credentials-default`
 
-Detailed information on FOCUS can be found at the [official website](focus.finops.org/#specification).
+Detailed information on FOCUS can be found at the [official website](https://focus.finops.org/#specification).
 
 ## Installation
 ### Prerequisites
 - go version v1.21.0+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
-- Access to a Kubernetes v1.30.0+ cluster.
+- Access to a Kubernetes v1.30.0+ cluster: Kubernetes must have the `CustomResourceFieldSelectors` feature gate enabled.
 
 ### Installation with HELM
 ```sh
