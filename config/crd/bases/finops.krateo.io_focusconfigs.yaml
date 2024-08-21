@@ -67,6 +67,9 @@ spec:
                   chargeCategory:
                     pattern: (\b[Aa]djustment\b)|(\b[Pp]urchase\b)|(\b[Tt]ax\b)|(\b[Uu]sage\b)
                     type: string
+                  chargeClass:
+                    pattern: (\b[Cc]orrection\b)
+                    type: string
                   chargeDescription:
                     type: string
                   chargeFrequency:
@@ -78,20 +81,38 @@ spec:
                   chargePeriodStart:
                     format: date-time
                     type: string
-                  chargeSubCategory:
-                    pattern: (\b[Oo]n-{0,1}[Dd]emand\b)|(\b[Uu]sed {0,1}[Cc]ommitment\b)|(\b[Uu]nsed
-                      {0,1}[Cc]ommitment\b)|(\b[Rr]efund\b)|(\b[Cc]redit\b)|(\b[Rr]ounding
-                      {0,1}[Ee]rror\b)|(\b[Gg]eneral {0,1}[Aa]djustment\b)
-                    type: string
                   commitmentDiscountCategory:
                     pattern: (\b[Ss]spend\b)|(\b[Uu]sage\b)
                     type: string
                   commitmentDiscountName:
                     type: string
+                  commitmentDiscountStatus:
+                    pattern: (\b[Uu]sed\b)|(\b[Uu]nused\b)
+                    type: string
                   commitmentDiscountType:
                     type: string
                   commitmentDiscoutId:
                     type: string
+                  consumedQuantity:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  consumedUnit:
+                    type: string
+                  contractedCost:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  contractedUnitCost:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   effectiveCost:
                     anyOf:
                     - type: integer
@@ -127,7 +148,9 @@ spec:
                     type: string
                   publisher:
                     type: string
-                  region:
+                  regionId:
+                    type: string
+                  regionName:
                     type: string
                   resourceId:
                     type: string
@@ -162,14 +185,6 @@ spec:
                       - value
                       type: object
                     type: array
-                  usageQuantity:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  usageUnit:
-                    type: string
                 required:
                 - billedCost
                 - billingCurrency
@@ -179,9 +194,10 @@ spec:
                 - chargeDescription
                 - chargePeriodEnd
                 - chargePeriodStart
+                - consumedQuantity
+                - consumedUnit
+                - contractedCost
                 - invoiceIssuer
-                - usageQuantity
-                - usageUnit
                 type: object
               scraperConfig:
                 properties:
