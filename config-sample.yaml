@@ -1,8 +1,8 @@
 apiVersion: finops.krateo.io/v1
 kind: DatabaseConfig
 metadata:
-  name: # config name
-  namespace: default
+  name: # DatabaseConfig name
+  namespace: # DatabaseConfig namespace
 spec:
   host: # host name for the database
   token: # access token
@@ -12,13 +12,8 @@ spec:
 apiVersion: finops.krateo.io/v1
 kind: FocusConfig
 metadata:
-  labels:
-    app.kubernetes.io/name: focusconfig
-    app.kubernetes.io/instance: focusconfig-sample
-    app.kubernetes.io/part-of: operator-focus
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: operator-focus
-  name: focusconfig-sample2
+  name: # FocusConfig name
+  namespace: # FocusConfig namespace
 spec:
   scraperConfig: # same fields as krateoplatformops/finops-prometheus-scraper-generic
     tableName: # tableName in the database to upload the data to
@@ -28,40 +23,48 @@ spec:
       name: # name of the databaseConfigRef CR 
       namespace: # namespace of the databaseConfigRef CR
   focusSpec: # See FOCUS for field details
-    region:
     availabilityZone:
     billedCost:
     billingAccountId:
     billingAccountName:
     billingCurrency:
-    billingPeriodStart:
     billingPeriodEnd:
+    billingPeriodStart:
     chargeCategory:
+    chargeClass:
     chargeDescription:
     chargeFrequency:
-    chargeSubCategory:
-    chargePeriodStart:
     chargePeriodEnd:
+    chargePeriodStart:
+    commitmentDiscountCategory:
+    commitmentDiscountName:
+    commitmentDiscountStatus:
+    commitmentDiscountType:
+    commitmentDiscoutId:
+    consumedQuantity:
+    consumedUnit:
+    contractedCost:
+    contractedUnitCost:
     effectiveCost:
+    invoiceIssuer:
     listCost:
     listUnitPrice:
     pricingCategory:
     pricingQuantity:
     pricingUnit:
-    invoiceIssuer:
     provider:
     publisher:
+    regionId:
+    regionName:
     resourceId:
     resourceName:
     resourceType:
-    serviceName:
     serviceCategory:
-    subAccountId:
-    subAccountName:
+    serviceName:
     skuId:
     skuPriceId:
+    subAccountId:
+    subAccountName:
     tags:
       - key:
         value:
-    usageQuantity:
-    usageUnit: 
