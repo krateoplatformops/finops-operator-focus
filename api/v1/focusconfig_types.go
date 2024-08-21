@@ -78,16 +78,16 @@ type FocusSpec struct {
 	BillingPeriodEnd   metav1.Time `yaml:"billingPeriodEnd" json:"billingPeriodEnd"`
 	BillingPeriodStart metav1.Time `yaml:"billingPeriodStart" json:"billingPeriodStart"`
 	// +kubebuilder:validation:Pattern=`(\b[Aa]djustment\b)|(\b[Pp]urchase\b)|(\b[Tt]ax\b)|(\b[Uu]sage\b)`
-	ChargeCategory    string `yaml:"chargeCategory" json:"chargeCategory"`
+	ChargeCategory string `yaml:"chargeCategory" json:"chargeCategory"`
+	// +kubebuilder:validation:Pattern=`(\b[Cc]orrection\b)`
+	// +optional
+	ChargeClass       string `yaml:"chargeClass" json:"chargeClass"`
 	ChargeDescription string `yaml:"chargeDescription" json:"chargeDescription"`
 	// +kubebuilder:validation:Pattern=`(\b[Oo]ne-{0,1}[Tt]ime\b)|(\b[Rr]ecurring\b)|(\b[Uu]sage-{0,1}[Bb]ased\b)`
 	// +optional
 	ChargeFrequency   string      `yaml:"chargeFrequency" json:"chargeFrequency"`
 	ChargePeriodEnd   metav1.Time `yaml:"chargePeriodEnd" json:"chargePeriodEnd"`
 	ChargePeriodStart metav1.Time `yaml:"chargePeriodStart" json:"chargePeriodStart"`
-	// +kubebuilder:validation:Pattern=`(\b[Oo]n-{0,1}[Dd]emand\b)|(\b[Uu]sed {0,1}[Cc]ommitment\b)|(\b[Uu]nsed {0,1}[Cc]ommitment\b)|(\b[Rr]efund\b)|(\b[Cc]redit\b)|(\b[Rr]ounding {0,1}[Ee]rror\b)|(\b[Gg]eneral {0,1}[Aa]djustment\b)`
-	// +optional
-	ChargeSubCategory string `yaml:"chargeSubCategory" json:"chargeSubCategory"`
 	// +kubebuilder:validation:Pattern=`(\b[Ss]spend\b)|(\b[Uu]sage\b)`
 	// +optional
 	CommitmentDiscountCategory string `yaml:"commitmentDiscountCategory" json:"commitmentDiscountCategory"`
@@ -95,8 +95,16 @@ type FocusSpec struct {
 	CommitmentDiscountId string `yaml:"commitmentDiscoutId" json:"commitmentDiscoutId"`
 	// +optional
 	CommitmentDiscountType string `yaml:"commitmentDiscountType" json:"commitmentDiscountType"`
+	// +kubebuilder:validation:Pattern=`(\b[Uu]sed\b)|(\b[Uu]nused\b)`
 	// +optional
-	CommitmentDiscountName string `yaml:"commitmentDiscountName" json:"commitmentDiscountName"`
+	CommitmentDiscountStatus string `yaml:"commitmentDiscountStatus" json:"commitmentDiscountStatus"`
+	// +optional
+	CommitmentDiscountName string            `yaml:"commitmentDiscountName" json:"commitmentDiscountName"`
+	ConsumedQuantity       resource.Quantity `yaml:"consumedQuantity" json:"consumedQuantity"`
+	ConsumedUnit           string            `yaml:"consumedUnit" json:"consumedUnit"`
+	ContractedCost         resource.Quantity `yaml:"contractedCost" json:"contractedCost"`
+	// +optional
+	ContractedUnitCost resource.Quantity `yaml:"contractedUnitCost" json:"contractedUnitCost"`
 	// +optional
 	EffectiveCost resource.Quantity `yaml:"effectiveCost" json:"effectiveCost"`
 	InvoiceIssuer string            `yaml:"invoiceIssuer" json:"invoiceIssuer"`
@@ -116,7 +124,9 @@ type FocusSpec struct {
 	// +optional
 	Publisher string `yaml:"publisher" json:"publisher"`
 	// +optional
-	Region string `yaml:"region" json:"region"`
+	RegionId string `yaml:"regionId" json:"regionId"`
+	// +optional
+	RegionName string `yaml:"regionName" json:"regionName"`
 	// +optional
 	ResourceId string `yaml:"resourceId" json:"resourceId"`
 	// +optional
@@ -135,10 +145,7 @@ type FocusSpec struct {
 	// +optional
 	SubAccountId string `yaml:"subAccountId" json:"subAccountId"`
 	// +optional
-
 	SubAccountName string `yaml:"subAccountName" json:"subAccountName"`
 	// +optional
-	Tags          []TagsType        `yaml:"tags" json:"tags"`
-	UsageQuantity resource.Quantity `yaml:"usageQuantity" json:"usageQuantity"`
-	UsageUnit     string            `yaml:"usageUnit" json:"usageUnit"`
+	Tags []TagsType `yaml:"tags" json:"tags"`
 }
