@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	operatorPackage "github.com/krateoplatformops/finops-operator-exporter/api/v1"
+	finopsDataTypes "github.com/krateoplatformops/finops-data-types/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,25 +58,25 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	return nil
 }
 
-func GetExporterScraperObject(namespace string, groupKey string, url string, deploymentName string) *operatorPackage.ExporterScraperConfig {
+func GetExporterScraperObject(namespace string, groupKey string, url string, deploymentName string) *finopsDataTypes.ExporterScraperConfig {
 	additionalVariables := make(map[string]string)
 	additionalVariables["certFilePath"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	additionalVariables["kubernetes_host"] = "KUBERNETES_SERVICE_HOST"
 	additionalVariables["kubernetes_port"] = "KUBERNETES_SERVICE_PORT"
 
-	scaperConfigObject := operatorPackage.ScraperConfig{}
+	scaperConfigObject := finopsDataTypes.ScraperConfigSpec{}
 	if groupKey != ">>" {
-		scaperConfigObject = operatorPackage.ScraperConfig{
+		scaperConfigObject = finopsDataTypes.ScraperConfigSpec{
 			TableName:            strings.Split(groupKey, ">")[2],
 			PollingIntervalHours: 6,
-			ScraperDatabaseConfigRef: operatorPackage.ObjectRef{
+			ScraperDatabaseConfigRef: finopsDataTypes.ObjectRef{
 				Name:      strings.Split(groupKey, ">")[1],
 				Namespace: strings.Split(groupKey, ">")[0],
 			},
 		}
 	}
 
-	return &operatorPackage.ExporterScraperConfig{
+	return &finopsDataTypes.ExporterScraperConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExporterScraperConfig",
 			APIVersion: "finops.krateo.io/v1",
@@ -85,9 +85,9 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 			Name:      deploymentName,
 			Namespace: namespace,
 		},
-		Spec: operatorPackage.ExporterScraperConfigSpec{
-			ExporterConfig: operatorPackage.ExporterConfig{
-				Provider:              operatorPackage.ObjectRef{},
+		Spec: finopsDataTypes.ExporterScraperConfigSpec{
+			ExporterConfig: finopsDataTypes.ExporterConfigSpec{
+				Provider:              finopsDataTypes.ObjectRef{},
 				Url:                   url,
 				RequireAuthentication: true,
 				AuthenticationMethod:  "cert-file",
@@ -124,14 +124,14 @@ func DeleteExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clie
 		DoRaw(ctx)
 }
 
-func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (operatorPackage.ExporterScraperConfig, error) {
+func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (finopsDataTypes.ExporterScraperConfig, error) {
 	response, err := clientset.RESTClient().Get().
 		AbsPath("/apis/finops.krateo.io/v1").
 		Namespace(namespace).
 		Resource("exporterscraperconfigs").
 		Name(deploymentName).
 		DoRaw(ctx)
-	var exporterScraperConfig operatorPackage.ExporterScraperConfig
+	var exporterScraperConfig finopsDataTypes.ExporterScraperConfig
 	if err != nil {
 		return exporterScraperConfig, err
 	} else {
@@ -158,7 +158,7 @@ func MakeGroupKeyKubeCompliant(groupKey string) string {
 }
 
 // Could probably be more readable and scalable with reflect, but for now its ok
-func checkExporterScraperConfigs(exporterScraperConfig1 operatorPackage.ExporterScraperConfig, exporterScraperConfig2 operatorPackage.ExporterScraperConfig) bool {
+func checkExporterScraperConfigs(exporterScraperConfig1 finopsDataTypes.ExporterScraperConfig, exporterScraperConfig2 finopsDataTypes.ExporterScraperConfig) bool {
 	if exporterScraperConfig1.Kind != exporterScraperConfig2.Kind {
 		return false
 	}
