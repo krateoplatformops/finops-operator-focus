@@ -3,7 +3,7 @@ module github.com/krateoplatformops/finops-operator-focus
 go 1.21
 
 require (
-	github.com/krateoplatformops/finops-data-types v0.0.0-20240822151538-b93702f31480
+	github.com/krateoplatformops/finops-data-types v0.0.0-20240830093537-a6444bf93807
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
 	k8s.io/apimachinery v0.29.0

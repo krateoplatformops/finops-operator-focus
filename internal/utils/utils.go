@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
@@ -43,7 +44,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 		if err != nil {
 			return err
 		}
-		_, err = clientset.RESTClient().Post().
+		response, err := clientset.RESTClient().Post().
 			AbsPath("/apis/finops.krateo.io/v1").
 			Namespace(namespace).
 			Resource("exporterscraperconfigs").
@@ -51,6 +52,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 			Body(jsonData).
 			DoRaw(ctx)
 		if err != nil {
+			fmt.Println(string(response))
 			return err
 		}
 	}
@@ -91,6 +93,7 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 				Url:                   url,
 				RequireAuthentication: true,
 				AuthenticationMethod:  "cert-file",
+				MetricType:            "cost",
 				PollingIntervalHours:  6,
 				AdditionalVariables:   additionalVariables,
 			},

@@ -63,14 +63,14 @@ spec:
     contractedCost:
     contractedUnitCost:
     effectiveCost:
-    invoiceIssuer:
+    invoiceIssuerName:
     listCost:
     listUnitPrice:
     pricingCategory:
     pricingQuantity:
     pricingUnit:
-    provider:
-    publisher:
+    providerName:
+    publisherName:
     regionId:
     regionName:
     resourceId:
