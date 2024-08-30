@@ -119,7 +119,7 @@ spec:
                     - type: string
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
-                  invoiceIssuer:
+                  invoiceIssuerName:
                     type: string
                   listCost:
                     anyOf:
@@ -144,9 +144,9 @@ spec:
                     x-kubernetes-int-or-string: true
                   pricingUnit:
                     type: string
-                  provider:
+                  providerName:
                     type: string
-                  publisher:
+                  publisherName:
                     type: string
                   regionId:
                     type: string
@@ -197,7 +197,7 @@ spec:
                 - consumedQuantity
                 - consumedUnit
                 - contractedCost
-                - invoiceIssuer
+                - invoiceIssuerName
                 type: object
               scraperConfig:
                 properties:
