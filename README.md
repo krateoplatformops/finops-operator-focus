@@ -22,7 +22,9 @@ metadata:
   namespace: # DatabaseConfig namespace
 spec:
   host: # host name for the database
-  token: # access token
+  token: # object reference to secret with key bearer-token
+    name: # secret name
+    namespace: # secret namespace
   clusterName: # generic compute cluster name
   notebookPath: # path to the notebook 
 ---
