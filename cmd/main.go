@@ -21,11 +21,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -37,8 +40,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
-	"github.com/krateoplatformops/finops-operator-focus/internal/controller"
-	"github.com/krateoplatformops/finops-operator-focus/internal/watcher"
+	operatorfocus "github.com/krateoplatformops/finops-operator-focus/internal/controller"
+	"github.com/krateoplatformops/provider-runtime/pkg/controller"
+	"github.com/krateoplatformops/provider-runtime/pkg/logging"
+	"github.com/krateoplatformops/provider-runtime/pkg/ratelimiter"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -119,6 +124,24 @@ func main() {
 			"the manager will watch and manage resources in all namespaces")
 	}
 
+	pollingIntervalString := os.Getenv("POLLING_INTERVAL")
+	maxReconcileRateString := os.Getenv("MAX_RECONCILE_RATE")
+
+	pollingIntervalInt, err := strconv.Atoi(pollingIntervalString)
+	pollingInterval := time.Duration(time.Duration(0))
+
+	if err != nil {
+		setupLog.Error(err, "unable to parse POLLING_INTERVAL, using default value")
+	} else if pollingIntervalInt != 0 {
+		pollingInterval = time.Duration(pollingIntervalInt) * time.Second
+	}
+
+	maxReconcileRate, err := strconv.Atoi(maxReconcileRateString)
+	if err != nil {
+		setupLog.Error(err, "unable to parse MAX_RECONCILE_RATE, using default value (1)")
+		maxReconcileRate = 1
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -148,15 +171,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.FocusConfigReconciler{
+	/*if err = (&controller.FocusConfigReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FocusConfig")
 		os.Exit(1)
+	}*/
+
+	o := controller.Options{
+		Logger:                  logging.NewLogrLogger(log.Log.WithName("operator-focus")),
+		MaxConcurrentReconciles: maxReconcileRate,
+		PollInterval:            pollingInterval,
+		GlobalRateLimiter:       ratelimiter.NewGlobal(maxReconcileRate),
 	}
 
-	watcher.StartWatcher(watchNamespace)
+	if err := operatorfocus.Setup(mgr, o); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CompositionReference")
+		os.Exit(1)
+	}
 
 	//+kubebuilder:scaffold:builder
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
