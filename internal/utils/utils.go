@@ -144,7 +144,7 @@ func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clients
 
 }
 
-func CreateGroupings(focusConfigList finopsv1.FocusConfigList) map[string][]finopsv1.FocusConfig {
+func CreateGroupings(focusConfigList *finopsv1.FocusConfigList) map[string][]finopsv1.FocusConfig {
 	configGroupingByDatabase := make(map[string][]finopsv1.FocusConfig)
 	for _, config := range focusConfigList.Items {
 		newGroupKey := config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace +
