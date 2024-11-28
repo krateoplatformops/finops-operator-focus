@@ -159,19 +159,26 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 
 	focusConfig.SetConditions(prv1.Creating())
 
-	focusConfigList := &finopsv1.FocusConfigList{}
 	focustConfigListUnstructured, err := clientHelper.ListObj(ctx, focusConfig.Namespace, focusConfig.APIVersion, "focusconfigs", e.dynClient)
 	if err != nil {
 		return fmt.Errorf("unable to list focusconfigs: %v", err)
 	}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(focustConfigListUnstructured.Object, focusConfigList)
-	if err != nil {
-		return fmt.Errorf("could not convert focus config unstructured list to config list: %v", err)
+
+	focusConfigList := &finopsv1.FocusConfigList{}
+	for _, focustConfigUnstructured := range focustConfigListUnstructured.Items {
+		focusConfig := &finopsv1.FocusConfig{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(focustConfigUnstructured.Object, focusConfig)
+		if err != nil {
+			return fmt.Errorf("could not convert focus config unstructured list to config list: %v", err)
+		}
+		focusConfigList.Items = append(focusConfigList.Items, *focusConfig)
 	}
+
+	e.log.Debug("objects in focusconfiglist", "len", len(focusConfigList.Items))
 
 	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 	for key := range configGroupingByDatabase {
-		if err = createExporterFromScratch(ctx, focusConfig.Namespace, key); err != nil {
+		if err = utils.CreateExporterCR(ctx, focusConfig.Namespace, key); err != nil {
 			return fmt.Errorf("unable to create exporters from scratch: %v", err)
 		}
 		for i := range configGroupingByDatabase[key] {
@@ -181,6 +188,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 				return fmt.Errorf("could not obtain focus config unstructured: %v", err)
 			}
 			err = clientHelper.UpdateStatus(ctx, unstructuredFocusConfig, "focusconfigs", e.dynClient)
+			e.log.Debug("focusconfig to update", "print", unstructuredFocusConfig)
 			if err != nil {
 				return fmt.Errorf("could not update focus config %s status: %v", unstructuredFocusConfig.GetName(), err)
 			}
@@ -226,20 +234,20 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	focusConfig.SetConditions(prv1.Deleting())
 
-	focusConfigList := &finopsv1.FocusConfigList{}
 	focustConfigListUnstructured, err := clientHelper.ListObj(ctx, focusConfig.Namespace, focusConfig.APIVersion, "focusconfigs", e.dynClient)
 	if err != nil {
 		return fmt.Errorf("unable to list focusconfigs: %v", err)
 	}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(focustConfigListUnstructured.Object, focusConfigList)
-	if err != nil {
-		return fmt.Errorf("could not convert focus config unstructured list to config list: %v", err)
-	}
 
-	// Remove deleted object from list
-	for i, focusConfigItem := range focusConfigList.Items {
-		if focusConfigItem.Namespace == focusConfig.Namespace && focusConfigItem.Name == focusConfig.Namespace {
-			focusConfigList.Items = append(focusConfigList.Items[:i], focusConfigList.Items[i+1:]...)
+	focusConfigList := &finopsv1.FocusConfigList{}
+	for _, focustConfigUnstructured := range focustConfigListUnstructured.Items {
+		focusConfigItem := &finopsv1.FocusConfig{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(focustConfigUnstructured.Object, focusConfigItem)
+		if err != nil {
+			return fmt.Errorf("could not convert focus config unstructured list to config list: %v", err)
+		}
+		if focusConfigItem.Namespace != focusConfig.Namespace || focusConfigItem.Name != focusConfig.Name {
+			focusConfigList.Items = append(focusConfigList.Items, *focusConfigItem)
 		}
 	}
 
@@ -256,6 +264,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		if len(deploymentName) > 44 {
 			deploymentName = deploymentName[len(deploymentName)-44:]
 		}
+		e.log.Debug("deployment deleted", "deployment", deploymentName)
 		clientSetLocal, err := utils.GetClientSet()
 		if err != nil {
 			panic(err)
@@ -264,14 +273,5 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	e.rec.Eventf(focusConfig, corev1.EventTypeNormal, "Received delete event", "removed groupkey")
-	return nil
-}
-
-func createExporterFromScratch(ctx context.Context, namespace string, groupKey string) error {
-	// Create the CR to start the Exporter Operator
-	err := utils.CreateExporterCR(ctx, namespace, groupKey)
-	if err != nil {
-		return err
-	}
 	return nil
 }

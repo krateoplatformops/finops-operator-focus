@@ -39,7 +39,6 @@ func GetObj(ctx context.Context, cr *finopsDataTypes.ObjectRef, ApiVersion strin
 		Version:  gv.Version,
 		Resource: Resource,
 	}
-	// Get structure to send to webservice
 	res, err := dynClient.Resource(gvr).Namespace(cr.Namespace).Get(ctx, cr.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve resource %s with name %s in namespace %s, with apiVersion %s: %w", Resource, cr.Name, cr.Namespace, ApiVersion, err)
