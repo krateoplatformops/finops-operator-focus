@@ -27,7 +27,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	} else {
 		deploymentName = "all-cr-exporter"
 	}
-	url := "https://<kubernetes_host>:<kubernetes_port>" + "/apis/finops.krateo.io/v1/namespaces/finops/focusconfigs?fieldSelector=status.groupKey=" + groupKey + "&limit=500"
+	url := fmt.Sprintf("https://<kubernetes_host>:<kubernetes_port>/apis/finops.krateo.io/v1/namespaces/%s/focusconfigs?fieldSelector=status.groupKey=%s&limit=500", namespace, groupKey)
 	// This check is used to avoid problems with the maximum length of object names in kubernetes (63)
 	// The longest appended portion is "-scraper-deployment", which is 19 characters, thus the 44
 	if len(deploymentName) > 44 {
