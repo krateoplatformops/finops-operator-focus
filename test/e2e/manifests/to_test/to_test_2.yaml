@@ -1,0 +1,113 @@
+apiVersion: finops.krateo.io/v1
+kind: FocusConfig
+metadata:
+  name: focusconfig-sample3
+  namespace: finops-test
+spec:
+  scraperConfig:
+    tableName: focus_export_1
+    pollingIntervalHours: 1
+    scraperDatabaseConfigRef: 
+      name: cratedb-config
+      namespace: finops
+  focusSpec:
+    availabilityZone: "EU"
+    billedCost: 27000.0
+    billingAccountId: "0000"
+    billingAccountName: "testAccount"
+    billingCurrency: "EUR"
+    billingPeriodStart: "2024-01-01T00:00:00+02:00"
+    billingPeriodEnd: "2024-12-31T23:59:59+02:00"
+    chargeCategory: "purchase"
+    #chargeClass: ""
+    chargeDescription: "1 Dell XYZ"
+    chargeFrequency: "one-time"
+    chargePeriodEnd: "2024-12-31T23:59:59+02:00"
+    chargePeriodStart: "2024-01-01T00:00:00+02:00"
+    consumedUnit: "Computer"
+    consumedQuantity: 3
+    contractedCost: 27000
+    contractedUnitCost: 9000
+    effectiveCost: 30000.0
+    invoiceIssuerName: "Dell"
+    listCost: 30000.0
+    listUnitPrice: 10000.0
+    pricingCategory: "other"
+    pricingQuantity: 3
+    pricingUnit: "machines"
+    providerName: "Dell"
+    publisherName: "Dell"
+    #regionId: 
+    #regionName: 
+    resourceId: "0000"
+    resourceName: "Dell HW"
+    resourceType: "Prod Cluster"
+    serviceCategory: "Compute"
+    serviceSubcategory: "test"
+    serviceName: "1 machine purchase"
+    skuId: "0000"
+    skuPriceId: "0000"
+    subAccountId: "1234"
+    subAccountName: "test"
+    tags:
+      - key: "testkey1"
+        value: "testvalue"
+      - key: "testkey2"
+        value: "testvalue"
+---
+apiVersion: finops.krateo.io/v1
+kind: FocusConfig
+metadata:
+  name: focusconfig-sample4
+  namespace: finops-test
+spec:
+  scraperConfig:
+    tableName: focus_export_2
+    pollingIntervalHours: 1
+    scraperDatabaseConfigRef: 
+      name: cratedb-config
+      namespace: finops
+  focusSpec:
+    availabilityZone: "EU"
+    billedCost: 30000.0
+    billingAccountId: "0000"
+    billingAccountName: "testAccount"
+    billingCurrency: "EUR"
+    billingPeriodStart: "2024-01-01T00:00:00+02:00"
+    billingPeriodEnd: "2024-12-31T23:59:59+02:00"
+    chargeCategory: "purchase"
+    #chargeClass: ""
+    chargeDescription: "1 Dell XYZ"
+    chargeFrequency: "one-time"
+    chargePeriodEnd: "2024-12-31T23:59:59+02:00"
+    chargePeriodStart: "2024-01-01T00:00:00+02:00"
+    consumedUnit: "Computer"
+    consumedQuantity: "3"
+    contractedCost: 30000
+    contractedUnitCost: 10000
+    effectiveCost: 30000.0
+    invoiceIssuerName: "Dell"
+    listCost: 30000.0
+    listUnitPrice: 10000.0
+    pricingCategory: "other"
+    pricingQuantity: 3
+    pricingUnit: "machines"
+    providerName: "Dell"
+    publisherName: "Dell"
+    #regionId: 
+    #regionName: 
+    resourceId: "0000"
+    resourceName: "Dell HW"
+    resourceType: "Prod Cluster"
+    serviceCategory: "Compute"
+    serviceSubcategory: "test"
+    serviceName: "1 machine purchase"
+    skuId: "0000"
+    skuPriceId: "0000"
+    subAccountId: "1234"
+    subAccountName: "test"
+    tags:
+      - key: "testkey1"
+        value: "testvalue"
+      - key: "testkey2"
+        value: "testvalue"
