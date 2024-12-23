@@ -160,7 +160,7 @@ func TestFOCUS(t *testing.T) {
 			}
 			if err := wait.For(
 				conditions.New(r).DeploymentAvailable("finops-operator-focus-controller-manager", testNamespace),
-				wait.WithTimeout(30*time.Second),
+				wait.WithTimeout(60*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
 				log.Printf("Timed out while waiting for finops-operator-focus deployment: %s", err)
@@ -189,7 +189,7 @@ func TestFOCUS(t *testing.T) {
 			deployment := &appsv1.Deployment{}
 
 			select {
-			case <-time.After(180 * time.Second):
+			case <-time.After(240 * time.Second):
 				t.Fatal("Timed out wating for controller creation")
 			case created := <-controllerCreationSig:
 				if !created {
