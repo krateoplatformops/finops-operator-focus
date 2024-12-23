@@ -1,4 +1,4 @@
-# helm install finops-operator-focus krateo/finops-operator-focus -n finops-test --set controllerManager.image.repository=krateo-finops-registry.westeurope.cloudapp.azure.com/finops-operator-focus --set image.tag=0.3.1 --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=krateo-finops-registry.westeurope.cloudapp.azure.com --dry-run
+# helm install finops-operator-focus krateo/finops-operator-focus -n finops-test --set controllerManager.image.repository=ghcr.io/krateoplatformops/finops-operator-focus --set image.tag=0.3.1 --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=ghcr.io/krateoplatformops --dry-run
 # Source: finops-operator-focus/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -30,7 +30,7 @@ metadata:
 data:
   MAX_RECONCILE_RATE: "1"
   POLLING_INTERVAL: "300"
-  REGISTRY: "krateo-finops-registry.westeurope.cloudapp.azure.com"
+  REGISTRY: "ghcr.io/krateoplatformops"
 ---
 # Source: finops-operator-focus/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -266,7 +266,7 @@ spec:
         envFrom:
         - configMapRef:
             name: finops-operator-focus-repo-envvar
-        image: krateo-finops-registry.westeurope.cloudapp.azure.com/finops-operator-focus:0.3.1
+        image: ghcr.io/krateoplatformops/finops-operator-focus:0.3.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

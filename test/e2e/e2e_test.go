@@ -40,13 +40,13 @@ const (
 
 	testName = "focusconfig-sample"
 
-	operatorExporterControllerRegistry = "krateo-finops-registry.westeurope.cloudapp.azure.com"
+	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorExporterControllerTag      = "0.3.2"
-	exporterRegistry                   = "krateo-finops-registry.westeurope.cloudapp.azure.com"
+	exporterRegistry                   = "ghcr.io/krateoplatformops"
 
-	operatorScraperControllerRegistry = "krateo-finops-registry.westeurope.cloudapp.azure.com"
+	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.3.1"
-	scraperRegistry                   = "krateo-finops-registry.westeurope.cloudapp.azure.com"
+	scraperRegistry                   = "ghcr.io/krateoplatformops"
 )
 
 func TestMain(m *testing.M) {
@@ -59,6 +59,15 @@ func TestMain(m *testing.M) {
 		envfuncs.CreateNamespace(testNamespace),
 		envfuncs.SetupCRDs(crdsPath, "*"),
 		func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+			// setup Krateo's helm
+			if p := e2eutils.RunCommand("helm repo add krateo https://charts.krateo.io"); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while adding repository: %s %v", p.Out(), p.Err())
+			}
+
+			if p := e2eutils.RunCommand("helm repo update krateo"); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while updating helm: %s %v", p.Out(), p.Err())
+			}
+
 			// install finops-operator-exporter
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm install finops-operator-exporter krateo/finops-operator-exporter -n %s --set controllerManager.image.repository=%s/finops-operator-exporter --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s", testNamespace, operatorExporterControllerRegistry, operatorExporterControllerTag, exporterRegistry),
