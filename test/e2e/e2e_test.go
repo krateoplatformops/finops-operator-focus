@@ -72,14 +72,14 @@ func TestMain(m *testing.M) {
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm install finops-operator-exporter krateo/finops-operator-exporter -n %s --set controllerManager.image.repository=%s/finops-operator-exporter --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s", testNamespace, operatorExporterControllerRegistry, operatorExporterControllerTag, exporterRegistry),
 			); p.Err() != nil {
-				return ctx, p.Err()
+				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
 			}
 
 			// install finops-operator-scraper
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm install finops-operator-scraper krateo/finops-operator-scraper -n %s --set controllerManager.image.repository=%s/finops-operator-scraper --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s", testNamespace, operatorScraperControllerRegistry, operatorScraperControllerTag, scraperRegistry),
 			); p.Err() != nil {
-				return ctx, p.Err()
+				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
 			}
 			return ctx, nil
 		},
@@ -90,11 +90,17 @@ func TestMain(m *testing.M) {
 		envfuncs.DeleteNamespace(testNamespace),
 		envfuncs.TeardownCRDs(crdsPath, "*"),
 		func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-			// install finops-operator-exporter
+			// uninstall finops-operator-exporter
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm uninstall finops-operator-exporter -n %s", testNamespace),
 			); p.Err() != nil {
-				return ctx, p.Err()
+				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
+			}
+
+			if p := e2eutils.RunCommand(
+				fmt.Sprintf("helm uninstall finops-operator-scraper -n %s", testNamespace),
+			); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
 			}
 			return ctx, nil
 		},
@@ -139,21 +145,21 @@ func TestFOCUS(t *testing.T) {
 
 			if err := wait.For(
 				conditions.New(r).DeploymentAvailable("finops-operator-exporter-controller-manager", testNamespace),
-				wait.WithTimeout(50*time.Second),
+				wait.WithTimeout(120*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
 				log.Printf("Timed out while waiting for finops-operator-exporter deployment: %s", err)
 			}
 			if err := wait.For(
 				conditions.New(r).DeploymentAvailable("finops-operator-scraper-controller-manager", testNamespace),
-				wait.WithTimeout(50*time.Second),
+				wait.WithTimeout(60*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
 				log.Printf("Timed out while waiting for finops-operator-scraper deployment: %s", err)
 			}
 			if err := wait.For(
 				conditions.New(r).DeploymentAvailable("finops-operator-focus-controller-manager", testNamespace),
-				wait.WithTimeout(50*time.Second),
+				wait.WithTimeout(30*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
 				log.Printf("Timed out while waiting for finops-operator-focus deployment: %s", err)
@@ -182,7 +188,7 @@ func TestFOCUS(t *testing.T) {
 			deployment := &appsv1.Deployment{}
 
 			select {
-			case <-time.After(150 * time.Second):
+			case <-time.After(180 * time.Second):
 				t.Fatal("Timed out wating for controller creation")
 			case created := <-controllerCreationSig:
 				if !created {
@@ -212,7 +218,7 @@ func TestFOCUS(t *testing.T) {
 
 			p := e2eutils.RunCommand(fmt.Sprintf("kubectl get service -n %s %s -o custom-columns=ports:spec.ports[0].nodePort", testNamespace, deploymentName+"-service"))
 			if p.Err() != nil {
-				t.Fatal(p.Err())
+				t.Fatal(fmt.Errorf("error with kubectl: %s %v", p.Out(), p.Err()))
 			}
 			portString := new(strings.Builder)
 			_, err := io.Copy(portString, p.Out())
@@ -223,7 +229,7 @@ func TestFOCUS(t *testing.T) {
 
 			p = e2eutils.RunCommand("kubectl get nodes -o custom-columns=status:status.addresses[0].address")
 			if p.Err() != nil {
-				t.Fatal(p.Err())
+				t.Fatal(fmt.Errorf("error with kubectl: %s %v", p.Out(), p.Err()))
 			}
 			addressString := new(strings.Builder)
 			_, err = io.Copy(addressString, p.Out())
@@ -234,7 +240,7 @@ func TestFOCUS(t *testing.T) {
 
 			p = e2eutils.RunCommand(fmt.Sprintf("curl -s %s:%s/metrics", address, portNumber))
 			if p.Err() != nil {
-				t.Fatal(p.Err())
+				t.Fatal(fmt.Errorf("error with curl: %s %v", p.Out(), p.Err()))
 			}
 
 			resultString := new(strings.Builder)
