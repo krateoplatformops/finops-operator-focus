@@ -97,6 +97,7 @@ func TestMain(m *testing.M) {
 				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
 			}
 
+			// uninstall finops-operator-scraper
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm uninstall finops-operator-scraper -n %s", testNamespace),
 			); p.Err() != nil {
