@@ -1,4 +1,4 @@
-# helm install finops-operator-focus krateo/finops-operator-focus -n finops-test --set controllerManager.image.repository=ghcr.io/krateoplatformops/finops-operator-focus --set image.tag=0.3.1 --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=ghcr.io/krateoplatformops --dry-run
+# helm install finops-operator-focus krateo/finops-operator-focus -n finops-test --set controllerManager.image.repository=ghcr.io/krateoplatformops/finops-operator-focus --set image.tag=0.3.2 --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=ghcr.io/krateoplatformops --dry-run
 # Source: finops-operator-focus/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -8,10 +8,10 @@ metadata:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: operator-focus
     app.kubernetes.io/part-of: operator-focus
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -22,10 +22,10 @@ kind: ConfigMap
 metadata:
   name: finops-operator-focus-repo-envvar
   labels:
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 data:
   MAX_RECONCILE_RATE: "1"
@@ -41,10 +41,10 @@ metadata:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: operator-focus
     app.kubernetes.io/part-of: operator-focus
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -85,10 +85,10 @@ kind: Role
 metadata:
   name: finops-operator-focus-manager
   labels:
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -183,10 +183,10 @@ metadata:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: operator-focus
     app.kubernetes.io/part-of: operator-focus
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -206,10 +206,10 @@ metadata:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: operator-focus
     app.kubernetes.io/part-of: operator-focus
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -229,10 +229,10 @@ metadata:
     app.kubernetes.io/component: manager
     app.kubernetes.io/part-of: operator-focus
     control-plane: controller-manager
-    helm.sh/chart: finops-operator-focus-0.3.1
+    helm.sh/chart: finops-operator-focus-0.3.2
     app.kubernetes.io/name: finops-operator-focus
     app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -266,7 +266,7 @@ spec:
         envFrom:
         - configMapRef:
             name: finops-operator-focus-repo-envvar
-        image: ghcr.io/krateoplatformops/finops-operator-focus:0.3.1
+        image: ghcr.io/krateoplatformops/finops-operator-focus:0.3.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
