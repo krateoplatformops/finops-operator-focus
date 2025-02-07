@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	finopsDataTypes "github.com/krateoplatformops/finops-data-types/api/v1"
+	finopsdatatypes "github.com/krateoplatformops/finops-data-types/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,11 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	} else {
 		deploymentName = "all-cr-exporter"
 	}
-	url := fmt.Sprintf("https://<kubernetes_host>:<kubernetes_port>/apis/finops.krateo.io/v1/namespaces/%s/focusconfigs?fieldSelector=status.groupKey=%s&limit=500", namespace, groupKey)
+	api := finopsdatatypes.API{
+		Path:        fmt.Sprintf("/apis/finops.krateo.io/v1/namespaces/%s/focusconfigs?fieldSelector=status.groupKey=%s&limit=500", namespace, groupKey),
+		Verb:        "GET",
+		EndpointRef: nil,
+	}
 	// This check is used to avoid problems with the maximum length of object names in kubernetes (63)
 	// The longest appended portion is "-scraper-deployment", which is 19 characters, thus the 44
 	if len(deploymentName) > 44 {
@@ -35,7 +39,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	}
 
 	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
-	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, url, deploymentName)
+	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, api, deploymentName)
 	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
 		if groupKey != ">>" {
 			DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
@@ -60,25 +64,22 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	return nil
 }
 
-func GetExporterScraperObject(namespace string, groupKey string, url string, deploymentName string) *finopsDataTypes.ExporterScraperConfig {
+func GetExporterScraperObject(namespace string, groupKey string, api finopsdatatypes.API, deploymentName string) *finopsdatatypes.ExporterScraperConfig {
 	additionalVariables := make(map[string]string)
-	additionalVariables["certFilePath"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-	additionalVariables["kubernetes_host"] = "KUBERNETES_SERVICE_HOST"
-	additionalVariables["kubernetes_port"] = "KUBERNETES_SERVICE_PORT"
 
-	scaperConfigObject := finopsDataTypes.ScraperConfigSpec{}
+	scaperConfigObject := finopsdatatypes.ScraperConfigSpec{}
 	if groupKey != ">>" {
-		scaperConfigObject = finopsDataTypes.ScraperConfigSpec{
+		scaperConfigObject = finopsdatatypes.ScraperConfigSpec{
 			TableName:            strings.Split(groupKey, ">")[2],
 			PollingIntervalHours: 6,
-			ScraperDatabaseConfigRef: finopsDataTypes.ObjectRef{
+			ScraperDatabaseConfigRef: finopsdatatypes.ObjectRef{
 				Name:      strings.Split(groupKey, ">")[1],
 				Namespace: strings.Split(groupKey, ">")[0],
 			},
 		}
 	}
 
-	return &finopsDataTypes.ExporterScraperConfig{
+	return &finopsdatatypes.ExporterScraperConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExporterScraperConfig",
 			APIVersion: "finops.krateo.io/v1",
@@ -87,15 +88,13 @@ func GetExporterScraperObject(namespace string, groupKey string, url string, dep
 			Name:      deploymentName,
 			Namespace: namespace,
 		},
-		Spec: finopsDataTypes.ExporterScraperConfigSpec{
-			ExporterConfig: finopsDataTypes.ExporterConfigSpec{
-				Provider:              finopsDataTypes.ObjectRef{},
-				Url:                   url,
-				RequireAuthentication: true,
-				AuthenticationMethod:  "cert-file",
-				MetricType:            "cost",
-				PollingIntervalHours:  6,
-				AdditionalVariables:   additionalVariables,
+		Spec: finopsdatatypes.ExporterScraperConfigSpec{
+			ExporterConfig: finopsdatatypes.ExporterConfigSpec{
+				Provider:             finopsdatatypes.ObjectRef{},
+				API:                  api,
+				MetricType:           "cost",
+				PollingIntervalHours: 6,
+				AdditionalVariables:  additionalVariables,
 			},
 			ScraperConfig: scaperConfigObject,
 		},
@@ -127,14 +126,14 @@ func DeleteExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clie
 		DoRaw(ctx)
 }
 
-func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (finopsDataTypes.ExporterScraperConfig, error) {
+func GetExporterScraperConfig(ctx context.Context, clientset *kubernetes.Clientset, namespace string, deploymentName string) (finopsdatatypes.ExporterScraperConfig, error) {
 	response, err := clientset.RESTClient().Get().
 		AbsPath("/apis/finops.krateo.io/v1").
 		Namespace(namespace).
 		Resource("exporterscraperconfigs").
 		Name(deploymentName).
 		DoRaw(ctx)
-	var exporterScraperConfig finopsDataTypes.ExporterScraperConfig
+	var exporterScraperConfig finopsdatatypes.ExporterScraperConfig
 	if err != nil {
 		return exporterScraperConfig, err
 	} else {
@@ -161,7 +160,7 @@ func MakeGroupKeyKubeCompliant(groupKey string) string {
 }
 
 // Could probably be more readable and scalable with reflect, but for now its ok
-func checkExporterScraperConfigs(exporterScraperConfig1 finopsDataTypes.ExporterScraperConfig, exporterScraperConfig2 finopsDataTypes.ExporterScraperConfig) bool {
+func checkExporterScraperConfigs(exporterScraperConfig1 finopsdatatypes.ExporterScraperConfig, exporterScraperConfig2 finopsdatatypes.ExporterScraperConfig) bool {
 	if exporterScraperConfig1.Kind != exporterScraperConfig2.Kind {
 		return false
 	}
@@ -185,15 +184,15 @@ func checkExporterScraperConfigs(exporterScraperConfig1 finopsDataTypes.Exporter
 		return false
 	}
 
-	if exporterScraperConfig1.Spec.ExporterConfig.Url != exporterScraperConfig2.Spec.ExporterConfig.Url {
+	if exporterScraperConfig1.Spec.ExporterConfig.API.Path != exporterScraperConfig2.Spec.ExporterConfig.API.Path {
 		return false
 	}
 
-	if exporterScraperConfig1.Spec.ExporterConfig.RequireAuthentication != exporterScraperConfig2.Spec.ExporterConfig.RequireAuthentication {
+	if exporterScraperConfig1.Spec.ExporterConfig.API.Verb != exporterScraperConfig2.Spec.ExporterConfig.API.Verb {
 		return false
 	}
 
-	if exporterScraperConfig1.Spec.ExporterConfig.AuthenticationMethod != exporterScraperConfig2.Spec.ExporterConfig.AuthenticationMethod {
+	if exporterScraperConfig1.Spec.ExporterConfig.API.EndpointRef != exporterScraperConfig2.Spec.ExporterConfig.API.EndpointRef {
 		return false
 	}
 

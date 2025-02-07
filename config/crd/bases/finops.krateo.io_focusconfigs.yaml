@@ -225,12 +225,41 @@ spec:
                 - chargePeriodStart
                 - consumedQuantity
                 - consumedUnit
-                - contractedCost
                 - invoiceIssuerName
                 - serviceCategory
                 type: object
               scraperConfig:
                 properties:
+                  api:
+                    description: API represents a request to an HTTP service
+                    properties:
+                      endpointRef:
+                        description: EndpointRef a reference to an Endpoint
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                      headers:
+                        description: Headers is an array of custom request headers
+                        items:
+                          type: string
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      path:
+                        description: Path is the request URI path
+                        type: string
+                      payload:
+                        description: Payload is the request body
+                        type: string
+                      verb:
+                        description: Verb is the request method (GET if omitted)
+                        type: string
+                    type: object
                   metricType:
                     default: cost
                     type: string
@@ -247,8 +276,6 @@ spec:
                     - namespace
                     type: object
                   tableName:
-                    type: string
-                  url:
                     type: string
                 required:
                 - pollingIntervalHours
