@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.23.2
 
 require (
-	github.com/krateoplatformops/finops-data-types v0.0.0-20241128115902-e3adbd56d585
+	github.com/krateoplatformops/finops-data-types v0.0.0-20250205150829-5237c25c841c
 	github.com/krateoplatformops/provider-runtime v0.9.0
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
