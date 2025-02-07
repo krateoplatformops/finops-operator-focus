@@ -8,7 +8,7 @@ This repository is part of the wider exporting architecture for the Krateo Compo
 4. [Configuration](#configuration)
 
 ## Overview
-This component is tasked with the creation of a generic exporting pipeline, according to the description given in a Custom Resource (CR). After the creation of the CR, the operator reads the FOCUS fields and creates a new resource for the FinOps Operator Exporter, pointing the `url` field at the Kubernetes API server and the FOCUS custom resource. This allow to create an exporter that reads directly the custom resource. The FinOps Operator Exporter then continues with the creation of the all the required resources, such as deployments, configMaps, services, and the CR for the FinOps Operator Scraper that manages scraping.
+This component is tasked with the creation of a generic exporting pipeline, according to the description given in a Custom Resource (CR). After the creation of the CR, the operator reads the FOCUS fields and creates a new resource for the FinOps Operator Exporter, pointing the `api` field at the Kubernetes API server and the FOCUS custom resource. This allow to create an exporter that reads directly the custom resource. The FinOps Operator Exporter then continues with the creation of the all the required resources, such as deployments, configMaps, services, and the CR for the FinOps Operator Scraper that manages scraping.
 
 ## Architecture
 ![Krateo Composable FinOps Operator FOCUS](resources/images/KCF-operator-focus.png)
@@ -21,12 +21,11 @@ metadata:
   name: # DatabaseConfig name
   namespace: # DatabaseConfig namespace
 spec:
-  host: # host name for the database
-  token: # object reference to secret with key bearer-token
+  username: # username string
+  passwordSecretRef: # object reference to secret with password
     name: # secret name
     namespace: # secret namespace
-  clusterName: # generic compute cluster name
-  notebookPath: # path to the notebook 
+    key: # secret key
 ---
 apiVersion: finops.krateo.io/v1
 kind: FocusConfig
@@ -36,7 +35,6 @@ metadata:
 spec:
   scraperConfig: # same fields as krateoplatformops/finops-prometheus-scraper-generic
     tableName: # tableName in the database to upload the data to
-    # url: # path to the exporter, optional (if missing, its taken from the exporter)
     pollingIntervalHours: # int
     scraperDatabaseConfigRef: # See above kind DatabaseConfig
       name: # name of the databaseConfigRef CR 
