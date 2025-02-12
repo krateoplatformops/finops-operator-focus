@@ -181,7 +181,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 		}
 		for i := range configGroupingByDatabase[key] {
 
-			unstructuredFocusConfigUptd, err := clientHelper.GetObj(ctx, &config.ObjectRef{Name: configGroupingByDatabase[key][i].Name, Namespace: configGroupingByDatabase[key][i].Namespace}, focusConfig.APIVersion, "focusConfigs", e.dynClient)
+			unstructuredFocusConfigUptd, err := clientHelper.GetObj(ctx, &config.ObjectRef{Name: configGroupingByDatabase[key][i].Name, Namespace: configGroupingByDatabase[key][i].Namespace}, focusConfig.APIVersion, "focusconfigs", e.dynClient)
 			if err != nil {
 				return fmt.Errorf("could not obtain updated focus config: %v", err)
 			}
