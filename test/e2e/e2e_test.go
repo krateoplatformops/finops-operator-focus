@@ -136,6 +136,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestFOCUS(t *testing.T) {
+	mgrCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	controllerCreationSig := make(chan bool, 2)
 	createSingle := features.New("Create single").
 		WithLabel("type", "CR and resources").
@@ -146,7 +149,7 @@ func TestFOCUS(t *testing.T) {
 			}
 
 			// Start the controller manager
-			err = startTestManager(ctx)
+			err = startTestManager(mgrCtx)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -350,8 +353,14 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 			return ctx
 		}).Feature()
 
+	cleanup := features.New("Cleanup").
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			cancel()
+			return ctx
+		}).Feature()
+
 	// test feature
-	testenv.Test(t, createSingle, createDual)
+	testenv.Test(t, createSingle, createDual, cleanup)
 }
 
 // startTestManager starts the controller manager with the given config
