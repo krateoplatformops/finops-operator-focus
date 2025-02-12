@@ -171,14 +171,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	/*if err = (&controller.FocusConfigReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FocusConfig")
-		os.Exit(1)
-	}*/
-
 	o := controller.Options{
 		Logger:                  logging.NewLogrLogger(log.Log.WithName("operator-focus")),
 		MaxConcurrentReconciles: maxReconcileRate,

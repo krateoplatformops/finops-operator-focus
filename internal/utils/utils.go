@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	finopsdatatypes "github.com/krateoplatformops/finops-data-types/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
@@ -102,10 +102,7 @@ func GetExporterScraperObject(namespace string, groupKey string, api finopsdatat
 }
 
 func GetClientSet() (*kubernetes.Clientset, error) {
-	inClusterConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return &kubernetes.Clientset{}, err
-	}
+	inClusterConfig := ctrl.GetConfigOrDie()
 
 	inClusterConfig.APIPath = "/apis"
 	inClusterConfig.GroupVersion = &finopsv1.GroupVersion

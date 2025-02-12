@@ -92,10 +92,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (reconciler.ExternalClient, error) {
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve rest.InClusterConfig: %w", err)
-	}
+	cfg := ctrl.GetConfigOrDie()
 
 	dynClient, err := clientHelper.New(cfg)
 	if err != nil {

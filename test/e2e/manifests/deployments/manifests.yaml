@@ -1,21 +1,3 @@
-# helm install finops-operator-focus krateo/finops-operator-focus -n finops-test --set controllerManager.image.repository=ghcr.io/krateoplatformops/finops-operator-focus --set image.tag=0.4.0 --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=ghcr.io/krateoplatformops --dry-run
-# Source: finops-operator-focus/templates/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: finops-operator-focus-controller-manager
-  labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: operator-focus
-    app.kubernetes.io/part-of: operator-focus
-    helm.sh/chart: finops-operator-focus-0.4.0
-    app.kubernetes.io/name: finops-operator-focus
-    app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.4.0"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    {}
----
 # Source: finops-operator-focus/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -194,7 +176,7 @@ roleRef:
   name: 'finops-operator-focus-leader-election'
 subjects:
 - kind: ServiceAccount
-  name: 'finops-operator-focus-controller-manager'
+  name: default
   namespace: 'finops-test'
 ---
 # Source: finops-operator-focus/templates/rolebinding.yaml
@@ -217,77 +199,5 @@ roleRef:
   name: 'finops-operator-focus-manager'
 subjects:
 - kind: ServiceAccount
-  name: 'finops-operator-focus-controller-manager'
+  name: default
   namespace: 'finops-test'
----
-# Source: finops-operator-focus/templates/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: finops-operator-focus-controller-manager
-  labels:
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/part-of: operator-focus
-    control-plane: controller-manager
-    helm.sh/chart: finops-operator-focus-0.4.0
-    app.kubernetes.io/name: finops-operator-focus
-    app.kubernetes.io/instance: finops-operator-focus
-    app.kubernetes.io/version: "0.4.0"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      control-plane: controller-manager
-      app.kubernetes.io/name: finops-operator-focus
-      app.kubernetes.io/instance: finops-operator-focus
-  template:
-    metadata:
-      labels:
-        control-plane: controller-manager
-        app.kubernetes.io/name: finops-operator-focus
-        app.kubernetes.io/instance: finops-operator-focus
-      annotations:
-        kubectl.kubernetes.io/default-container: manager
-    spec:
-      containers:
-      - args:
-        - --health-probe-bind-address=:8081
-        - --leader-elect
-        command:
-        - /manager
-        env:
-        - name: WATCH_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: 
-        envFrom:
-        - configMapRef:
-            name: finops-operator-focus
-        image: ghcr.io/krateoplatformops/finops-operator-focus:0.4.0
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        name: manager
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          {}
-        securityContext:
-          null
-      imagePullSecrets:
-      - name: registry-credentials
-      securityContext:
-        runAsNonRoot: true
-      serviceAccountName: finops-operator-focus-controller-manager
-      terminationGracePeriodSeconds: 10
