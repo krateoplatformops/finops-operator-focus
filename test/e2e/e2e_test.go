@@ -46,7 +46,6 @@ type contextKey string
 
 var (
 	testenv env.Environment
-	scheme  = runtime.NewScheme()
 )
 
 const (
@@ -65,12 +64,6 @@ const (
 	operatorScraperControllerTag      = "0.4.0"
 	scraperRegistry                   = "ghcr.io/krateoplatformops"
 )
-
-func init() {
-	// Add the required schemes
-	operatorfocusapi.AddToScheme(scheme)
-	appsv1.AddToScheme(scheme)
-}
 
 func TestMain(m *testing.M) {
 	testenv = env.New()
@@ -148,14 +141,14 @@ func TestFOCUS(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			operatorfocusapi.AddToScheme(r.GetScheme())
+			r.WithNamespace(testNamespace)
+
 			// Start the controller manager
-			err = startTestManager(mgrCtx)
+			err = startTestManager(mgrCtx, r.GetScheme())
 			if err != nil {
 				t.Fatal(err)
 			}
-
-			operatorfocusapi.AddToScheme(r.GetScheme())
-			r.WithNamespace(testNamespace)
 
 			ctx = context.WithValue(ctx, contextKey("client"), r)
 
@@ -364,7 +357,7 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 }
 
 // startTestManager starts the controller manager with the given config
-func startTestManager(ctx context.Context) error {
+func startTestManager(ctx context.Context, scheme *runtime.Scheme) error {
 	os.Setenv("REGISTRY", "ghcr.io/krateoplatformops")
 
 	var metricsAddr string
