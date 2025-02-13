@@ -2,15 +2,22 @@ package test
 
 import (
 	"context"
+	"crypto/tls"
+	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/e2e-framework/klient/decoder"
 	"sigs.k8s.io/e2e-framework/klient/k8s/resources"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -24,6 +31,15 @@ import (
 
 	operatorfocusapi "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	"github.com/krateoplatformops/finops-operator-focus/internal/utils"
+	"github.com/krateoplatformops/provider-runtime/pkg/controller"
+	"github.com/krateoplatformops/provider-runtime/pkg/logging"
+	"github.com/krateoplatformops/provider-runtime/pkg/ratelimiter"
+
+	operatorlogger "sigs.k8s.io/controller-runtime/pkg/log"
+
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	operatorfocus "github.com/krateoplatformops/finops-operator-focus/internal/controller"
 )
 
 type contextKey string
@@ -113,16 +129,26 @@ func TestMain(m *testing.M) {
 }
 
 func TestFOCUS(t *testing.T) {
+	mgrCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	controllerCreationSig := make(chan bool, 2)
 	createSingle := features.New("Create single").
 		WithLabel("type", "CR and resources").
 		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 			r, err := resources.New(c.Client().RESTConfig())
 			if err != nil {
-				t.Fail()
+				t.Fatal(err)
 			}
+
 			operatorfocusapi.AddToScheme(r.GetScheme())
 			r.WithNamespace(testNamespace)
+
+			// Start the controller manager
+			err = startTestManager(mgrCtx, r.GetScheme())
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			ctx = context.WithValue(ctx, contextKey("client"), r)
 
@@ -149,22 +175,17 @@ func TestFOCUS(t *testing.T) {
 				wait.WithTimeout(120*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
-				log.Printf("Timed out while waiting for finops-operator-exporter deployment: %s", err)
+				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-exporter deployment")
 			}
 			if err := wait.For(
 				conditions.New(r).DeploymentAvailable("finops-operator-scraper", testNamespace),
 				wait.WithTimeout(60*time.Second),
 				wait.WithInterval(5*time.Second),
 			); err != nil {
-				log.Printf("Timed out while waiting for finops-operator-scraper deployment: %s", err)
+				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-scraper deployment")
 			}
-			if err := wait.For(
-				conditions.New(r).DeploymentAvailable("finops-operator-focus-controller-manager", testNamespace),
-				wait.WithTimeout(60*time.Second),
-				wait.WithInterval(5*time.Second),
-			); err != nil {
-				log.Printf("Timed out while waiting for finops-operator-focus deployment: %s", err)
-			}
+
+			time.Sleep(5 * time.Second)
 			controllerCreationSig <- true
 			return ctx
 		}).
@@ -264,16 +285,9 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 	createDual := features.New("Create dual").
 		WithLabel("type", "CR and resources").
 		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			r, err := resources.New(c.Client().RESTConfig())
-			if err != nil {
-				t.Fail()
-			}
-			operatorfocusapi.AddToScheme(r.GetScheme())
-			r.WithNamespace(testNamespace)
+			r := ctx.Value(contextKey("client")).(*resources.Resources)
 
-			ctx = context.WithValue(ctx, contextKey("client"), r)
-
-			err = decoder.DecodeEachFile(
+			err := decoder.DecodeEachFile(
 				ctx, os.DirFS(toTest), "*2.yaml",
 				decoder.CreateHandler(r),
 				decoder.MutateNamespace(testNamespace),
@@ -334,4 +348,82 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 
 	// test feature
 	testenv.Test(t, createSingle, createDual)
+}
+
+// startTestManager starts the controller manager with the given config
+func startTestManager(ctx context.Context, scheme *runtime.Scheme) error {
+	os.Setenv("REGISTRY", "ghcr.io/krateoplatformops")
+
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var secureMetrics bool
+	var enableHTTP2 bool
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", false,
+		"If set the metrics endpoint is served securely")
+	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	disableHTTP2 := func(c *tls.Config) {
+		c.NextProtos = []string{"http/1.1"}
+	}
+
+	tlsOpts := []func(*tls.Config){}
+	if !enableHTTP2 {
+		tlsOpts = append(tlsOpts, disableHTTP2)
+	}
+
+	webhookServer := webhook.NewServer(webhook.Options{
+		TLSOpts: tlsOpts,
+	})
+
+	namespaceCacheConfigMap := make(map[string]cache.Config)
+	namespaceCacheConfigMap[testNamespace] = cache.Config{}
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress:   metricsAddr,
+			SecureServing: secureMetrics,
+			TLSOpts:       tlsOpts,
+		},
+		WebhookServer:          webhookServer,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "cb7859c8.krateo.io",
+		Cache:                  cache.Options{DefaultNamespaces: namespaceCacheConfigMap},
+	})
+	if err != nil {
+		os.Exit(1)
+	}
+
+	o := controller.Options{
+		Logger:                  logging.NewLogrLogger(operatorlogger.Log.WithName("operator-focus")),
+		MaxConcurrentReconciles: 1,
+		PollInterval:            100,
+		GlobalRateLimiter:       ratelimiter.NewGlobal(1),
+	}
+
+	if err := operatorfocus.Setup(mgr, o); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := mgr.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("Failed to start manager")
+		}
+	}()
+
+	return nil
 }

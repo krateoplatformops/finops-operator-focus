@@ -31,6 +31,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	config "github.com/krateoplatformops/finops-data-types/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
 	prv1 "github.com/krateoplatformops/provider-runtime/apis/common/v1"
 	"github.com/krateoplatformops/provider-runtime/pkg/controller"
@@ -92,10 +93,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (reconciler.ExternalClient, error) {
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve rest.InClusterConfig: %w", err)
-	}
+	cfg := ctrl.GetConfigOrDie()
 
 	dynClient, err := clientHelper.New(cfg)
 	if err != nil {
@@ -182,8 +180,15 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 			return fmt.Errorf("unable to create exporters from scratch: %v", err)
 		}
 		for i := range configGroupingByDatabase[key] {
-			configGroupingByDatabase[key][i].Status.GroupKey = key
-			unstructuredFocusConfig, err := clientHelper.ToUnstructured(&configGroupingByDatabase[key][i])
+
+			unstructuredFocusConfigUptd, err := clientHelper.GetObj(ctx, &config.ObjectRef{Name: configGroupingByDatabase[key][i].Name, Namespace: configGroupingByDatabase[key][i].Namespace}, focusConfig.APIVersion, "focusconfigs", e.dynClient)
+			if err != nil {
+				return fmt.Errorf("could not obtain updated focus config: %v", err)
+			}
+			focusConfig := &finopsv1.FocusConfig{}
+			_ = runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredFocusConfigUptd.Object, focusConfig)
+			focusConfig.Status.GroupKey = key
+			unstructuredFocusConfig, err := clientHelper.ToUnstructured(focusConfig)
 			if err != nil {
 				return fmt.Errorf("could not obtain focus config unstructured: %v", err)
 			}
