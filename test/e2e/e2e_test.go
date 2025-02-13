@@ -346,14 +346,8 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 			return ctx
 		}).Feature()
 
-	cleanup := features.New("Cleanup").
-		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			cancel()
-			return ctx
-		}).Feature()
-
 	// test feature
-	testenv.Test(t, createSingle, createDual, cleanup)
+	testenv.Test(t, createSingle, createDual)
 }
 
 // startTestManager starts the controller manager with the given config
