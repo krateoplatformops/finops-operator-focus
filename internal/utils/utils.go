@@ -93,7 +93,7 @@ func GetExporterScraperObject(namespace string, groupKey string, api finopsdatat
 				Provider:             finopsdatatypes.ObjectRef{},
 				API:                  api,
 				MetricType:           "cost",
-				PollingIntervalHours: 6,
+				PollingIntervalHours: scaperConfigObject.PollingIntervalHours,
 				AdditionalVariables:  additionalVariables,
 			},
 			ScraperConfig: scaperConfigObject,
