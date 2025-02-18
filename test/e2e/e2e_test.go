@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -280,7 +281,71 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 				t.Fatal(fmt.Errorf("unexpected exporter output"))
 			}
 			return ctx
-		}).Feature()
+		}).
+		Assess("ValueAfterDelete", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			r := ctx.Value(contextKey("client")).(*resources.Resources)
+
+			toDelete := &operatorfocusapi.FocusConfig{ObjectMeta: metav1.ObjectMeta{
+				Name:      "focusconfig-sample2",
+				Namespace: testNamespace,
+			}}
+
+			err := r.Delete(ctx, toDelete, resources.WithGracePeriod(time.Duration(1)*time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			time.Sleep(5 * time.Minute) // Wait for the smallest polling interval period possible for the exporter
+
+			deploymentName := ctx.Value(contextKey("deploymentName")).(string)
+
+			p := e2eutils.RunCommand(fmt.Sprintf("kubectl get service -n %s %s -o custom-columns=ports:spec.ports[0].nodePort", testNamespace, deploymentName+"-service"))
+			if p.Err() != nil {
+				t.Fatal(fmt.Errorf("error with kubectl: %s %v", p.Out(), p.Err()))
+			}
+			portString := new(strings.Builder)
+			_, err = io.Copy(portString, p.Out())
+			if err != nil {
+				t.Fatal(err)
+			}
+			portNumber := strings.Split(portString.String(), "\n")[1]
+
+			p = e2eutils.RunCommand("kubectl get nodes -o custom-columns=status:status.addresses[0].address")
+			if p.Err() != nil {
+				t.Fatal(fmt.Errorf("error with kubectl: %s %v", p.Out(), p.Err()))
+			}
+			addressString := new(strings.Builder)
+			_, err = io.Copy(addressString, p.Out())
+			if err != nil {
+				t.Fatal(err)
+			}
+			address := strings.Split(addressString.String(), "\n")[1]
+
+			p = e2eutils.RunCommand(fmt.Sprintf("curl -s %s:%s/metrics", address, portNumber))
+			if p.Err() != nil {
+				t.Fatal(fmt.Errorf("error with curl: %s %v", p.Out(), p.Err()))
+			}
+
+			resultString := new(strings.Builder)
+			_, err = io.Copy(resultString, p.Out())
+			if err != nil {
+				t.Fatal(err)
+			}
+			predictedOutput := `#HELPbilled_cost__1
+#TYPEbilled_cost__1gauge
+billed_cost__1{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",BillingAccountName="testAccount",BillingCurrency="EUR",BillingPeriodEnd="2024-12-31T21:59:59Z",BillingPeriodStart="2023-12-31T22:00:00Z",CapacityReservationId="",CapacityReservationStatus="",ChargeCategory="purchase",ChargeClass="",ChargeDescription="1DellXYZ",ChargeFrequency="one-time",ChargePeriodEnd="2024-12-31T21:59:59Z",ChargePeriodStart="2023-12-31T22:00:00Z",CommitmentDiscountCategory="",CommitmentDiscountId="",CommitmentDiscountName="",CommitmentDiscountQuantity="0",CommitmentDiscountStatus="",CommitmentDiscountType="",CommitmentDiscountUnit="",ConsumedQuantity="3",ConsumedUnit="Computer",ContractedCost="27000",ContractedUnitCost="9000",EffectiveCost="30000",InvoiceIssuerName="Dell",ListCost="30000",ListUnitPrice="10000",PricingCategory="other",PricingQuantity="3",PricingUnit="machines",ProviderName="Dell",PublisherName="Dell",RegionId="",RegionName="",ResourceId="0000",ResourceName="DellHW",ResourceType="ProdCluster",ServiceCategory="Compute",ServiceName="1machinepurchase",ServiceSubcategory="test",SkuId="0000",SkuMeter="",SkuPriceDetails="",SkuPriceId="0000",SubAccountId="1234",SubAccountName="test",Tags="testkey1:testvalue;testkey2:testvalue"}27000`
+			if !strings.Contains(strings.Replace(resultString.String(), " ", "", -1), strings.Replace(predictedOutput, " ", "", -1)) {
+				t.Fatal(fmt.Errorf("unexpected exporter output: value missing"))
+			}
+			deletedOutput := `#HELPbilled_cost__2
+#TYPEbilled_cost__2gauge
+billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",BillingAccountName="testAccount",BillingCurrency="EUR",BillingPeriodEnd="2024-12-31T21:59:59Z",BillingPeriodStart="2023-12-31T22:00:00Z",CapacityReservationId="",CapacityReservationStatus="",ChargeCategory="purchase",ChargeClass="",ChargeDescription="1DellXYZ",ChargeFrequency="one-time",ChargePeriodEnd="2024-12-31T21:59:59Z",ChargePeriodStart="2023-12-31T22:00:00Z",CommitmentDiscountCategory="",CommitmentDiscountId="",CommitmentDiscountName="",CommitmentDiscountQuantity="0",CommitmentDiscountStatus="",CommitmentDiscountType="",CommitmentDiscountUnit="",ConsumedQuantity="3",ConsumedUnit="Computer",ContractedCost="30000",ContractedUnitCost="10000",EffectiveCost="30000",InvoiceIssuerName="Dell",ListCost="30000",ListUnitPrice="10000",PricingCategory="other",PricingQuantity="3",PricingUnit="machines",ProviderName="Dell",PublisherName="Dell",RegionId="",RegionName="",ResourceId="0000",ResourceName="DellHW",ResourceType="ProdCluster",ServiceCategory="Compute",ServiceName="1machinepurchase",ServiceSubcategory="test",SkuId="0000",SkuMeter="",SkuPriceDetails="",SkuPriceId="0000",SubAccountId="1234",SubAccountName="test",Tags="testkey1:testvalue;testkey2:testvalue"}30000`
+			if strings.Contains(strings.Replace(resultString.String(), " ", "", -1), strings.Replace(deletedOutput, " ", "", -1)) {
+				t.Fatal(fmt.Errorf("unexpected exporter output: deleted content still present"))
+			}
+			return ctx
+		}).
+		Feature()
 
 	createDual := features.New("Create dual").
 		WithLabel("type", "CR and resources").
