@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateExporterCR(ctx context.Context, namespace string, groupKey string) error {
+func CreateExporterCR(ctx context.Context, namespace string, groupKey string, pollingIntervalHours int) error {
 	clientset, err := GetClientSet()
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	}
 
 	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
-	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, api, deploymentName)
+	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, api, deploymentName, pollingIntervalHours)
 	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
 		if groupKey != ">>" {
 			DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
@@ -64,14 +64,14 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string) er
 	return nil
 }
 
-func GetExporterScraperObject(namespace string, groupKey string, api finopsdatatypes.API, deploymentName string) *finopsdatatypes.ExporterScraperConfig {
+func GetExporterScraperObject(namespace string, groupKey string, api finopsdatatypes.API, deploymentName string, pollingIntervalHours int) *finopsdatatypes.ExporterScraperConfig {
 	additionalVariables := make(map[string]string)
 
 	scaperConfigObject := finopsdatatypes.ScraperConfigSpec{}
 	if groupKey != ">>" {
 		scaperConfigObject = finopsdatatypes.ScraperConfigSpec{
 			TableName:            strings.Split(groupKey, ">")[2],
-			PollingIntervalHours: 6,
+			PollingIntervalHours: pollingIntervalHours,
 			ScraperDatabaseConfigRef: finopsdatatypes.ObjectRef{
 				Name:      strings.Split(groupKey, ">")[1],
 				Namespace: strings.Split(groupKey, ">")[0],

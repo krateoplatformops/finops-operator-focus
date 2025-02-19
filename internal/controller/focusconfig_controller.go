@@ -176,9 +176,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 
 	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 	for key := range configGroupingByDatabase {
-		if err = utils.CreateExporterCR(ctx, focusConfig.Namespace, key); err != nil {
-			return fmt.Errorf("unable to create exporters from scratch: %v", err)
-		}
+		minPollingIntervalHours := 9999999999
 		for i := range configGroupingByDatabase[key] {
 
 			unstructuredFocusConfigUptd, err := clientHelper.GetObj(ctx, &config.ObjectRef{Name: configGroupingByDatabase[key][i].Name, Namespace: configGroupingByDatabase[key][i].Namespace}, focusConfig.APIVersion, "focusconfigs", e.dynClient)
@@ -197,6 +195,13 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 			if err != nil {
 				return fmt.Errorf("could not update focus config %s status: %v", unstructuredFocusConfig.GetName(), err)
 			}
+
+			if configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingIntervalHours < minPollingIntervalHours {
+				minPollingIntervalHours = configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingIntervalHours
+			}
+		}
+		if err = utils.CreateExporterCR(ctx, focusConfig.Namespace, key, minPollingIntervalHours); err != nil {
+			return fmt.Errorf("unable to create exporters from scratch: %v", err)
 		}
 	}
 
