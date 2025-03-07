@@ -295,7 +295,7 @@ billed_cost__2{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",
 				t.Fatal(err)
 			}
 
-			time.Sleep(5 * time.Minute) // Wait for the smallest polling interval period possible for the exporter
+			time.Sleep(10 * time.Second) // Wait for the smallest polling interval period possible for the exporter
 
 			deploymentName := ctx.Value(contextKey("deploymentName")).(string)
 
