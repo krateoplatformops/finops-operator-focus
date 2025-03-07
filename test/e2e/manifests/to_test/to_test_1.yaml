@@ -6,7 +6,7 @@ metadata:
 spec:
   scraperConfig:
     tableName: focus_export
-    pollingIntervalHours: 0
+    pollingInterval: "5s"
     scraperDatabaseConfigRef: 
       name: cratedb-config
       namespace: finops
@@ -63,7 +63,7 @@ metadata:
 spec:
   scraperConfig:
     tableName: focus_export
-    pollingIntervalHours: 0
+    pollingInterval: "5s"
     scraperDatabaseConfigRef: 
       name: cratedb-config
       namespace: finops
