@@ -30,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	config "github.com/krateoplatformops/finops-data-types/api/v1"
 	finopsv1 "github.com/krateoplatformops/finops-operator-focus/api/v1"
@@ -176,7 +177,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 
 	configGroupingByDatabase := utils.CreateGroupings(focusConfigList)
 	for key := range configGroupingByDatabase {
-		minPollingIntervalHours := 9999999999
+		minPollingInterval := metav1.Duration{Duration: 99999 * time.Second}
 		for i := range configGroupingByDatabase[key] {
 
 			unstructuredFocusConfigUptd, err := clientHelper.GetObj(ctx, &config.ObjectRef{Name: configGroupingByDatabase[key][i].Name, Namespace: configGroupingByDatabase[key][i].Namespace}, focusConfig.APIVersion, "focusconfigs", e.dynClient)
@@ -196,11 +197,11 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 				return fmt.Errorf("could not update focus config %s status: %v", unstructuredFocusConfig.GetName(), err)
 			}
 
-			if configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingIntervalHours < minPollingIntervalHours {
-				minPollingIntervalHours = configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingIntervalHours
+			if configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval.Seconds() < minPollingInterval.Seconds() {
+				minPollingInterval = configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval
 			}
 		}
-		if err = utils.CreateExporterCR(ctx, focusConfig.Namespace, key, minPollingIntervalHours); err != nil {
+		if err = utils.CreateExporterCR(ctx, focusConfig.Namespace, key, minPollingInterval); err != nil {
 			return fmt.Errorf("unable to create exporters from scratch: %v", err)
 		}
 	}
