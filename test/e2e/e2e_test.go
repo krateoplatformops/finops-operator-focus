@@ -60,6 +60,7 @@ const (
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorExporterControllerTag      = "0.4.0"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
+	exporterVersion                    = "0.4.2"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.4.0"
@@ -87,7 +88,7 @@ func TestMain(m *testing.M) {
 
 			// install finops-operator-exporter
 			if p := e2eutils.RunCommand(
-				fmt.Sprintf("helm install finops-operator-exporter krateo/finops-operator-exporter -n %s --set controllerManager.image.repository=%s/finops-operator-exporter --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s", testNamespace, operatorExporterControllerRegistry, operatorExporterControllerTag, exporterRegistry),
+				fmt.Sprintf("helm install finops-operator-exporter krateo/finops-operator-exporter -n %s --set controllerManager.image.repository=%s/finops-operator-exporter --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s --set env.EXPORTER_VERSION=%s", testNamespace, operatorExporterControllerRegistry, operatorExporterControllerTag, exporterRegistry, exporterVersion),
 			); p.Err() != nil {
 				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
 			}
@@ -295,7 +296,7 @@ billed_cost{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",Bil
 				t.Fatal(err)
 			}
 
-			time.Sleep(10 * time.Second) // Wait for the smallest polling interval period possible for the exporter
+			time.Sleep(15 * time.Second) // Wait for the smallest polling interval period possible for the exporter
 
 			deploymentName := ctx.Value(contextKey("deploymentName")).(string)
 
