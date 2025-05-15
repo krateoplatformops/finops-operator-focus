@@ -8,8 +8,8 @@ spec:
     tableName: focus_export
     pollingInterval: "5s"
     scraperDatabaseConfigRef: 
-      name: cratedb-config
-      namespace: finops
+      name: finops-database-handler
+      namespace: finops-test
   focusSpec:
     availabilityZone: "EU"
     billedCost: 27000.0
@@ -65,8 +65,8 @@ spec:
     tableName: focus_export
     pollingInterval: "5s"
     scraperDatabaseConfigRef: 
-      name: cratedb-config
-      namespace: finops
+      name: finops-database-handler
+      namespace: finops-test
   focusSpec:
     availabilityZone: "EU"
     billedCost: 30000.0
