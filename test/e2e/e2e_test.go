@@ -58,13 +58,17 @@ const (
 	testName = "focusconfig-sample"
 
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
-	operatorExporterControllerTag      = "0.4.0"
+	operatorExporterControllerTag      = "0.4.1"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
 	exporterVersion                    = "0.4.2"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.4.0"
 	scraperRegistry                   = "ghcr.io/krateoplatformops"
+	scraperVersion                    = "0.4.1"
+	finopsDatabaseHandlerUrl          = "http://finops-database-handler." + testNamespace + ":8088"
+
+	cratedbHost = "cratedb." + testNamespace
 )
 
 func TestMain(m *testing.M) {
@@ -95,7 +99,24 @@ func TestMain(m *testing.M) {
 
 			// install finops-operator-scraper
 			if p := e2eutils.RunCommand(
-				fmt.Sprintf("helm install finops-operator-scraper krateo/finops-operator-scraper -n %s --set controllerManager.image.repository=%s/finops-operator-scraper --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s", testNamespace, operatorScraperControllerRegistry, operatorScraperControllerTag, scraperRegistry),
+				fmt.Sprintf("helm install finops-operator-scraper krateo/finops-operator-scraper -n %s --set controllerManager.image.repository=%s/finops-operator-scraper --set image.tag=%s --set imagePullSecrets[0].name=registry-credentials --set image.pullPolicy=Always --set env.REGISTRY=%s --set env.SCRAPER_VERSION=%s --set env.URL_DB_WEBSERVICE=%s", testNamespace, operatorScraperControllerRegistry, operatorScraperControllerTag, scraperRegistry, scraperVersion, finopsDatabaseHandlerUrl),
+			); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
+			}
+
+			// install cratedb-chart
+			if p := e2eutils.RunCommand(
+				fmt.Sprintf("helm install cratedb krateo/cratedb -n %s", testNamespace),
+			); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
+			}
+
+			// Wait for cratedb to install
+			time.Sleep(30 * time.Second)
+
+			// install finops-database-handler
+			if p := e2eutils.RunCommand(
+				fmt.Sprintf("helm install finops-database-handler krateo/finops-database-handler -n %s --set cratedbUserSystemName=%s, --set env.CRATE_HOST=%s", testNamespace, "cratedb-system-credentials", cratedbHost),
 			); p.Err() != nil {
 				return ctx, fmt.Errorf("helm error while installing chart: %s %v", p.Out(), p.Err())
 			}
@@ -118,6 +139,20 @@ func TestMain(m *testing.M) {
 			// uninstall finops-operator-scraper
 			if p := e2eutils.RunCommand(
 				fmt.Sprintf("helm uninstall finops-operator-scraper -n %s", testNamespace),
+			); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
+			}
+
+			// uninstall finops-operator-scraper
+			if p := e2eutils.RunCommand(
+				fmt.Sprintf("helm uninstall cratedb -n %s", testNamespace),
+			); p.Err() != nil {
+				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
+			}
+
+			// uninstall finops-operator-scraper
+			if p := e2eutils.RunCommand(
+				fmt.Sprintf("helm uninstall finops-database-handler -n %s", testNamespace),
 			); p.Err() != nil {
 				return ctx, fmt.Errorf("helm error while uninstalling chart: %s %v", p.Out(), p.Err())
 			}
@@ -154,6 +189,28 @@ func TestFOCUS(t *testing.T) {
 
 			ctx = context.WithValue(ctx, contextKey("client"), r)
 
+			if err := wait.For(
+				conditions.New(r).DeploymentAvailable("finops-operator-exporter", testNamespace),
+				wait.WithTimeout(120*time.Second),
+				wait.WithInterval(5*time.Second),
+			); err != nil {
+				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-exporter deployment")
+			}
+			if err := wait.For(
+				conditions.New(r).DeploymentAvailable("finops-operator-scraper", testNamespace),
+				wait.WithTimeout(60*time.Second),
+				wait.WithInterval(5*time.Second),
+			); err != nil {
+				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-scraper deployment")
+			}
+			if err := wait.For(
+				conditions.New(r).DeploymentAvailable("finops-database-handler", testNamespace),
+				wait.WithTimeout(60*time.Second),
+				wait.WithInterval(5*time.Second),
+			); err != nil {
+				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-scraper deployment")
+			}
+
 			err = decoder.DecodeEachFile(
 				ctx, os.DirFS(deploymentsPath), "*",
 				decoder.CreateHandler(r),
@@ -170,21 +227,6 @@ func TestFOCUS(t *testing.T) {
 			)
 			if err != nil {
 				t.Fatalf("Failed due to error: %s", err)
-			}
-
-			if err := wait.For(
-				conditions.New(r).DeploymentAvailable("finops-operator-exporter", testNamespace),
-				wait.WithTimeout(120*time.Second),
-				wait.WithInterval(5*time.Second),
-			); err != nil {
-				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-exporter deployment")
-			}
-			if err := wait.For(
-				conditions.New(r).DeploymentAvailable("finops-operator-scraper", testNamespace),
-				wait.WithTimeout(60*time.Second),
-				wait.WithInterval(5*time.Second),
-			); err != nil {
-				log.Logger.Error().Err(err).Msg("Timed out while waiting for finops-operator-scraper deployment")
 			}
 
 			time.Sleep(5 * time.Second)
@@ -331,6 +373,17 @@ billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",Bil
 			if strings.Contains(strings.Replace(resultString.String(), " ", "", -1), strings.Replace(deletedOutput, " ", "", -1)) {
 				t.Fatal(fmt.Errorf("unexpected exporter output: deleted content still present"))
 			}
+
+			// Cleanup
+			toDelete = &operatorfocusapi.FocusConfig{ObjectMeta: metav1.ObjectMeta{
+				Name:      "focusconfig-sample1",
+				Namespace: testNamespace,
+			}}
+
+			err = r.Delete(ctx, toDelete, resources.WithGracePeriod(time.Duration(1)*time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
 			return ctx
 		}).
 		Feature()
@@ -399,8 +452,44 @@ billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",Bil
 			return ctx
 		}).Feature()
 
+	databaseCheck := features.New("Database Check").
+		WithLabel("type", "Read and Upload").
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			return ctx
+		}).
+		Assess("Upload", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			r := ctx.Value(contextKey("client")).(*resources.Resources)
+
+			// Wait for scraper to finish
+			time.Sleep(5 * time.Second)
+
+			deployment1 := &appsv1.Deployment{}
+			deploymentName1 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_1", ">")[2]) + "-exporter"
+			err := r.Get(ctx, deploymentName1+"-deployment", testNamespace, deployment1)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if deployment1.Status.ReadyReplicas != 1 {
+				t.Fatal("Scraper replicas are not available")
+			}
+
+			deployment2 := &appsv1.Deployment{}
+			deploymentName2 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_2", ">")[2]) + "-exporter"
+			err = r.Get(ctx, deploymentName2+"-deployment", testNamespace, deployment2)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if deployment2.Status.ReadyReplicas != 1 {
+				t.Fatal("Scraper replicas are not available")
+			}
+
+			return ctx
+		}).Feature()
+
 	// test feature
-	testenv.Test(t, createSingle, createDual)
+	testenv.Test(t, createSingle, createDual, databaseCheck)
 }
 
 // startTestManager starts the controller manager with the given config
