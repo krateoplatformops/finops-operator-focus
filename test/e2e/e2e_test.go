@@ -60,7 +60,7 @@ const (
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorExporterControllerTag      = "0.4.1"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
-	exporterVersion                    = "0.4.2"
+	exporterVersion                    = "0.4.3"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.4.0"

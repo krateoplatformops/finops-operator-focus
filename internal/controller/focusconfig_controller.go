@@ -197,7 +197,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) error {
 				return fmt.Errorf("could not update focus config %s status: %v", unstructuredFocusConfig.GetName(), err)
 			}
 
-			if configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval.Seconds() < minPollingInterval.Seconds() {
+			if configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval.Milliseconds() != 0 && configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval.Milliseconds() < minPollingInterval.Milliseconds() {
 				minPollingInterval = configGroupingByDatabase[key][i].Spec.ScraperConfig.PollingInterval
 			}
 		}
