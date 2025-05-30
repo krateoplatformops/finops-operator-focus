@@ -1,7 +1,7 @@
 apiVersion: finops.krateo.io/v1
 kind: FocusConfig
 metadata:
-  name: focusconfig-sample3
+  name: focusconfig-sample4
   namespace: finops-test
 spec:
   scraperConfig:
@@ -58,7 +58,7 @@ spec:
 apiVersion: finops.krateo.io/v1
 kind: FocusConfig
 metadata:
-  name: focusconfig-sample4
+  name: focusconfig-sample5
   namespace: finops-test
 spec:
   scraperConfig:
