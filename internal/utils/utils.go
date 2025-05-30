@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,6 +67,11 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string, po
 
 func GetExporterScraperObject(namespace string, groupKey string, api finopsdatatypes.API, deploymentName string, pollingInterval metav1.Duration) *finopsdatatypes.ExporterScraperConfig {
 	additionalVariables := make(map[string]string)
+
+	// The value 99999*time.Second is the default value for pollingInterval when it is initialized to look for the minimum
+	if pollingInterval.Duration.Milliseconds() == 0 || pollingInterval.Duration == 99999*time.Second {
+		pollingInterval.Duration = 5 * time.Minute
+	}
 
 	scaperConfigObject := finopsdatatypes.ScraperConfigSpec{}
 	if groupKey != ">>" {

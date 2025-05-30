@@ -60,7 +60,7 @@ const (
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorExporterControllerTag      = "0.4.1"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
-	exporterVersion                    = "0.4.2"
+	exporterVersion                    = "0.4.3"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.4.0"
@@ -277,6 +277,19 @@ func TestFOCUS(t *testing.T) {
 
 			ctx = context.WithValue(ctx, contextKey("deploymentName"), deploymentName)
 
+			deployment = &appsv1.Deployment{}
+			err = r.Get(ctx, deploymentName, testNamespace, deployment)
+			if err != nil {
+				deploymentName = "all-cr-exporter"
+				if len(deploymentName) > 44 {
+					deploymentName = deploymentName[len(deploymentName)-44:]
+				}
+				err := r.Get(ctx, deploymentName+"-deployment", testNamespace, deployment)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
 			return ctx
 		}).
 		Assess("Value", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -321,6 +334,9 @@ func TestFOCUS(t *testing.T) {
 billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",BillingAccountName="testAccount",BillingCurrency="EUR",BillingPeriodEnd="2024-12-31T21:59:59Z",BillingPeriodStart="2023-12-31T22:00:00Z",CapacityReservationId="",CapacityReservationStatus="",ChargeCategory="purchase",ChargeClass="",ChargeDescription="1DellXYZ",ChargeFrequency="one-time",ChargePeriodEnd="2024-12-31T21:59:59Z",ChargePeriodStart="2023-12-31T22:00:00Z",CommitmentDiscountCategory="",CommitmentDiscountId="",CommitmentDiscountName="",CommitmentDiscountQuantity="0",CommitmentDiscountStatus="",CommitmentDiscountType="",CommitmentDiscountUnit="",ConsumedQuantity="3",ConsumedUnit="Computer",ContractedCost="27000",ContractedUnitCost="9000",EffectiveCost="30000",InvoiceIssuerName="Dell",ListCost="30000",ListUnitPrice="10000",PricingCategory="other",PricingQuantity="3",PricingUnit="machines",ProviderName="Dell",PublisherName="Dell",RegionId="",RegionName="",ResourceId="0000",ResourceName="DellHW",ResourceType="ProdCluster",ServiceCategory="Compute",ServiceName="1machinepurchase",ServiceSubcategory="test",SkuId="0000",SkuMeter="",SkuPriceDetails="",SkuPriceId="0000",SubAccountId="1234",SubAccountName="test",Tags="testkey1:testvalue;testkey2:testvalue"}27000
 billed_cost{AvailabilityZone="EU",BilledCost="30000",BillingAccountId="0000",BillingAccountName="testAccount",BillingCurrency="EUR",BillingPeriodEnd="2024-12-31T21:59:59Z",BillingPeriodStart="2023-12-31T22:00:00Z",CapacityReservationId="",CapacityReservationStatus="",ChargeCategory="purchase",ChargeClass="",ChargeDescription="1DellXYZ",ChargeFrequency="one-time",ChargePeriodEnd="2024-12-31T21:59:59Z",ChargePeriodStart="2023-12-31T22:00:00Z",CommitmentDiscountCategory="",CommitmentDiscountId="",CommitmentDiscountName="",CommitmentDiscountQuantity="0",CommitmentDiscountStatus="",CommitmentDiscountType="",CommitmentDiscountUnit="",ConsumedQuantity="3",ConsumedUnit="Computer",ContractedCost="30000",ContractedUnitCost="10000",EffectiveCost="30000",InvoiceIssuerName="Dell",ListCost="30000",ListUnitPrice="10000",PricingCategory="other",PricingQuantity="3",PricingUnit="machines",ProviderName="Dell",PublisherName="Dell",RegionId="",RegionName="",ResourceId="0000",ResourceName="DellHW",ResourceType="ProdCluster",ServiceCategory="Compute",ServiceName="1machinepurchase",ServiceSubcategory="test",SkuId="0000",SkuMeter="",SkuPriceDetails="",SkuPriceId="0000",SubAccountId="1234",SubAccountName="test",Tags="testkey1:testvalue;testkey2:testvalue"}30000`
 			if !strings.Contains(strings.Replace(resultString.String(), " ", "", -1), strings.Replace(predictedOutput, " ", "", -1)) {
+				log.Error().Msg("unexpected exporter output")
+				log.Error().Msgf("expected output: %s", predictedOutput)
+				log.Error().Msgf("actual output: %s", resultString.String())
 				t.Fatal(fmt.Errorf("unexpected exporter output"))
 			}
 			return ctx
