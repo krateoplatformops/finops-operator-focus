@@ -23,8 +23,8 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string, po
 	}
 
 	var deploymentName string
-	if groupKey != ">>" {
-		deploymentName = MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+	if groupKey != "...." {
+		deploymentName = MakeGroupKeyKubeCompliant(strings.Split(groupKey, "..")[2]) + "-exporter"
 	} else {
 		deploymentName = "all-cr-exporter"
 	}
@@ -42,7 +42,7 @@ func CreateExporterCR(ctx context.Context, namespace string, groupKey string, po
 	exporterScraperConfigOld, err := GetExporterScraperConfig(ctx, clientset, namespace, deploymentName)
 	exporterScraperConfig := GetExporterScraperObject(namespace, groupKey, api, deploymentName, pollingInterval)
 	if err != nil || !checkExporterScraperConfigs(exporterScraperConfigOld, *exporterScraperConfig) {
-		if groupKey != ">>" {
+		if groupKey != "...." {
 			DeleteExporterScraperConfig(ctx, clientset, namespace, deploymentName)
 		}
 		jsonData, err := json.Marshal(exporterScraperConfig)
@@ -74,13 +74,13 @@ func GetExporterScraperObject(namespace string, groupKey string, api finopsdatat
 	}
 
 	scaperConfigObject := finopsdatatypes.ScraperConfigSpec{}
-	if groupKey != ">>" {
+	if groupKey != "...." {
 		scaperConfigObject = finopsdatatypes.ScraperConfigSpec{
-			TableName:       strings.Split(groupKey, ">")[2],
+			TableName:       strings.Split(groupKey, "..")[2],
 			PollingInterval: pollingInterval,
 			ScraperDatabaseConfigRef: finopsdatatypes.ObjectRef{
-				Name:      strings.Split(groupKey, ">")[1],
-				Namespace: strings.Split(groupKey, ">")[0],
+				Name:      strings.Split(groupKey, "..")[1],
+				Namespace: strings.Split(groupKey, "..")[0],
 			},
 		}
 	}
@@ -150,8 +150,8 @@ func CreateGroupings(focusConfigList *finopsv1.FocusConfigList) map[string][]fin
 	configGroupingByDatabase := make(map[string][]finopsv1.FocusConfig)
 	for _, config := range focusConfigList.Items {
 		newGroupKey := config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Namespace +
-			">" + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
-			">" + config.Spec.ScraperConfig.TableName
+			".." + config.Spec.ScraperConfig.ScraperDatabaseConfigRef.Name +
+			".." + config.Spec.ScraperConfig.TableName
 		arrSoFar := configGroupingByDatabase[newGroupKey]
 		configGroupingByDatabase[newGroupKey] = append(arrSoFar, config)
 	}
