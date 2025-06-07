@@ -60,7 +60,7 @@ const (
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorExporterControllerTag      = "0.4.1"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
-	exporterVersion                    = "0.4.3"
+	exporterVersion                    = "0.4.4"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
 	operatorScraperControllerTag      = "0.4.0"
@@ -265,7 +265,7 @@ func TestFOCUS(t *testing.T) {
 			deploymentName := "all-cr-exporter"
 			err := r.Get(ctx, deploymentName, testNamespace, deployment)
 			if err != nil {
-				deploymentName = utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export", ">")[2]) + "-exporter"
+				deploymentName = utils.MakeGroupKeyKubeCompliant(strings.Split("finops..cratedb-config..focus_export", "..")[2]) + "-exporter"
 				if len(deploymentName) > 44 {
 					deploymentName = deploymentName[len(deploymentName)-44:]
 				}
@@ -444,8 +444,8 @@ billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",Bil
 			deployment1 := &appsv1.Deployment{}
 			deployment2 := &appsv1.Deployment{}
 
-			deploymentName1 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_1", ">")[2]) + "-exporter"
-			deploymentName2 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_2", ">")[2]) + "-exporter"
+			deploymentName1 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops..cratedb-config..focus_export_1", "..")[2]) + "-exporter"
+			deploymentName2 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops..cratedb-config..focus_export_2", "..")[2]) + "-exporter"
 
 			if len(deploymentName1) > 44 {
 				deploymentName1 = deploymentName1[len(deploymentName1)-44:]
@@ -480,7 +480,7 @@ billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",Bil
 			time.Sleep(5 * time.Second)
 
 			deployment1 := &appsv1.Deployment{}
-			deploymentName1 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_1", ">")[2]) + "-exporter"
+			deploymentName1 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops..cratedb-config..focus_export_1", "..")[2]) + "-exporter"
 			err := r.Get(ctx, deploymentName1+"-deployment", testNamespace, deployment1)
 			if err != nil {
 				t.Fatal(err)
@@ -491,7 +491,7 @@ billed_cost{AvailabilityZone="EU",BilledCost="27000",BillingAccountId="0000",Bil
 			}
 
 			deployment2 := &appsv1.Deployment{}
-			deploymentName2 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops>cratedb-config>focus_export_2", ">")[2]) + "-exporter"
+			deploymentName2 := utils.MakeGroupKeyKubeCompliant(strings.Split("finops..cratedb-config..focus_export_2", "..")[2]) + "-exporter"
 			err = r.Get(ctx, deploymentName2+"-deployment", testNamespace, deployment2)
 			if err != nil {
 				t.Fatal(err)

@@ -266,8 +266,8 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 	_, ok = configGroupingByDatabase[groupKey]
 	if !ok {
 		var deploymentName string
-		if groupKey != ">>" {
-			deploymentName = utils.MakeGroupKeyKubeCompliant(strings.Split(groupKey, ">")[2]) + "-exporter"
+		if groupKey != "...." {
+			deploymentName = utils.MakeGroupKeyKubeCompliant(strings.Split(groupKey, "..")[2]) + "-exporter"
 		} else {
 			deploymentName = "all-cr-exporter"
 		}
