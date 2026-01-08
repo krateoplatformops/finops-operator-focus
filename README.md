@@ -93,9 +93,6 @@ The Composable FinOps can be used to display pricing in the Krateo Composable Po
 ## Configuration
 
 ### Prerequisites
-- go version v1.21.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
 - Access to a Kubernetes v1.30.0+ cluster: Kubernetes must have the `CustomResourceFieldSelectors` feature gate enabled.
 
 ### Dependencies
@@ -104,13 +101,6 @@ To run this repository in your Kubernetes cluster, you need to have the followin
  - finops-operator-scraper
  - finops-prometheus-exporter-generic
  - finops-prometheus-scraper-generic
-
-### Configuration
-There is also the need to have an active Databricks cluster, with SQL warehouse and notebooks configured. Its login details must be placed in the database-config CR.
-To start the exporting process, see the "config-sample.yaml" file. It includes the database-config CR.
-The deployment of the operator needs a secret for the repository, called `registry-credentials` in the namespace `finops`.
-
-The exporter container is created in the namespace of the CR. The exporter container looks for a secret in the CR namespace called `registry-credentials-default`
 
 Detailed information on FOCUS can be found at the [official website](https://focus.finops.org/#specification).
 
