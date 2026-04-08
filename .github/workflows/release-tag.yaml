@@ -13,11 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [buildjet-2vcpu-ubuntu-2204-arm, buildjet-2vcpu-ubuntu-2204]
+        runner: [ubuntu-22.04-arm, ubuntu-22.04]
         include:
-          - runner: buildjet-2vcpu-ubuntu-2204-arm
+          - runner: ubuntu-22.04-arm
             platform: linux/arm64
-          - runner: buildjet-2vcpu-ubuntu-2204
+          - runner: ubuntu-22.04
             platform: linux/amd64
     runs-on: ${{ matrix.runner }}
     
