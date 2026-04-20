@@ -58,14 +58,14 @@ const (
 	testName = "focusconfig-sample"
 
 	operatorExporterControllerRegistry = "ghcr.io/krateoplatformops"
-	operatorExporterControllerTag      = "0.4.1"
+	operatorExporterControllerTag      = "0.5.1"
 	exporterRegistry                   = "ghcr.io/krateoplatformops"
-	exporterVersion                    = "0.4.4"
+	exporterVersion                    = "0.5.2"
 
 	operatorScraperControllerRegistry = "ghcr.io/krateoplatformops"
-	operatorScraperControllerTag      = "0.4.0"
+	operatorScraperControllerTag      = "0.5.0"
 	scraperRegistry                   = "ghcr.io/krateoplatformops"
-	scraperVersion                    = "0.4.1"
+	scraperVersion                    = "0.5.1"
 	finopsDatabaseHandlerUrl          = "http://finops-database-handler." + testNamespace + ":8088"
 
 	cratedbHost = "cratedb." + testNamespace
@@ -315,7 +315,7 @@ func TestFOCUS(t *testing.T) {
 				)
 			}()
 
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			log.Debug().Msgf("curl -s %s:%s/metrics", "localhost", portNumber)
 
