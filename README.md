@@ -1,112 +1,38 @@
-# FinOps Operator FOCUS
-This repository is part of the wider exporting architecture for the Krateo Composable FinOps and manages custom costs in the FOCUS format.
+# finops-operator-focus
 
-## Summary
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Examples](#examples)
-4. [Configuration](#configuration)
+A Kubernetes operator that manages custom costs in the FOCUS format, creating exporting pipelines by bridging FOCUS Custom Resources with the FinOps Operator Exporter and Scraper components.
 
-## Overview
-This component is tasked with the creation of a generic exporting pipeline, according to the description given in a Custom Resource (CR). After the creation of the CR, the operator reads the FOCUS fields and creates a new resource for the FinOps Operator Exporter, pointing the `api` field at the Kubernetes API server and the FOCUS custom resource. This allow to create an exporter that reads directly the custom resource. The FinOps Operator Exporter then continues with the creation of the all the required resources, such as deployments, configMaps, services, and the CR for the FinOps Operator Scraper that manages scraping.
+📖 **Full documentation**: [docs.krateo.io — finops-operator-focus](https://docs.krateo.io/key-concepts/kcf/finops-components/finops-operator-focus)
 
-## Architecture
-![Krateo Composable FinOps Operator FOCUS](resources/images/KCF-operator-focus.png)
-
-## Examples
-```yaml
-apiVersion: finops.krateo.io/v1
-kind: DatabaseConfig
-metadata:
-  name: # DatabaseConfig name
-  namespace: # DatabaseConfig namespace
-spec:
-  username: # username string
-  passwordSecretRef: # object reference to secret with password
-    name: # secret name
-    namespace: # secret namespace
-    key: # secret key
 ---
-apiVersion: finops.krateo.io/v1
-kind: FocusConfig
-metadata:
-  name: # FocusConfig name
-  namespace: # FocusConfig namespace
-spec:
-  scraperConfig: # same fields as krateoplatformops/finops-prometheus-scraper-generic
-    tableName: # tableName in the database to upload the data to
-    pollingInterval: # time duration, e.g., 12h30m
-    scraperDatabaseConfigRef: # See above kind DatabaseConfig
-      name: # name of the databaseConfigRef CR 
-      namespace: # namespace of the databaseConfigRef CR
-  focusSpec: # See FOCUS for field details
-    availabilityZone:
-    billedCost:
-    billingAccountId:
-    billingAccountName:
-    billingCurrency:
-    billingPeriodEnd:
-    billingPeriodStart:
-    chargeCategory:
-    chargeClass:
-    chargeDescription:
-    chargeFrequency:
-    chargePeriodEnd:
-    chargePeriodStart:
-    commitmentDiscountCategory:
-    commitmentDiscountName:
-    commitmentDiscountStatus:
-    commitmentDiscountType:
-    commitmentDiscoutId:
-    consumedQuantity:
-    consumedUnit:
-    contractedCost:
-    contractedUnitCost:
-    effectiveCost:
-    invoiceIssuerName:
-    listCost:
-    listUnitPrice:
-    pricingCategory:
-    pricingQuantity:
-    pricingUnit:
-    providerName:
-    publisherName:
-    regionId:
-    regionName:
-    resourceId:
-    resourceName:
-    resourceType:
-    serviceCategory:
-    serviceName:
-    skuId:
-    skuPriceId:
-    subAccountId:
-    subAccountName:
-    tags:
-      - key:
-        value:
+
+## Key features
+
+- Translates `FocusConfig` Custom Resources into full exporting pipelines, including deployments, configmaps, services, and scraper CRs
+- Reads FOCUS-compliant cost data directly from the Kubernetes API server via the FinOps Operator Exporter
+- Supports all standard FOCUS fields including billing, charge, commitment discount, pricing, and resource metadata
+
+## Requirements
+
+| Dependency | Minimum version |
+|------------|----------------|
+| Kubernetes | v1.31.0 (`CustomResourceFieldSelectors` feature gate required) |
+| Krateo | v3.0.0 |
+| finops-operator-exporter | v0.5.1 |
+| finops-operator-scraper | v0.5.0 |
+
+## Install
+
+```bash
+helm repo add krateo https://charts.krateo.io
+helm repo update
+helm install finops-operator-focus krateo/finops-operator-focus --namespace krateo-system --create-namespace
 ```
 
-### Example Use Case for Pricing Visualization
-The Composable FinOps can be used to display pricing in the Krateo Composable Portal cards through a dedicated composition. You can find out more here: [krateo-v2-template-finops-example-pricing-vm-azure](https://github.com/krateoplatformops/krateo-v2-template-finops-example-pricing-vm-azure).
+> For advanced installation options, custom values, and upgrade instructions, see the [installation guide](https://docs.krateo.io/key-concepts/kcf/finops-components/finops-operator-focus).
 
-## Configuration
+## Environment variables
 
-### Prerequisites
-- Access to a Kubernetes v1.30.0+ cluster: Kubernetes must have the `CustomResourceFieldSelectors` feature gate enabled.
-
-### Dependencies
-To run this repository in your Kubernetes cluster, you need to have the following images in the same container registry:
- - finops-operator-exporter
- - finops-operator-scraper
- - finops-prometheus-exporter-generic
- - finops-prometheus-scraper-generic
-
-Detailed information on FOCUS can be found at the [official website](https://focus.finops.org/#specification).
-
-### Installation with HELM
-```sh
-$ helm repo add krateo https://charts.krateo.io
-$ helm repo update krateo
-$ helm install finops-operator-focus krateo/finops-operator-focus
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| — | — | — | No environment variables are documented for this component |
